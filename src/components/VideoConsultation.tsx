@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Box,
   Card,
@@ -21,7 +21,10 @@ import {
   DialogActions,
   Alert,
   LinearProgress,
-  Fab
+  Fab,
+  Snackbar,
+  Badge,
+  Divider
 } from '@mui/material';
 import {
   VideoCall,
@@ -48,9 +51,17 @@ import {
   Groups,
   CheckCircle,
   Warning,
-  Info
+  Info,
+  SignalCellular4Bar,
+  SignalCellular3Bar,
+  SignalCellular2Bar,
+  SignalCellular1Bar,
+  SignalCellular0Bar,
+  Wifi,
+  WifiOff
 } from '@mui/icons-material';
 import { VideoSession, Participant, Message } from '../types';
+import { webRTCService, ConnectionQuality } from '../services/webrtc.service';
 
 interface VideoConsultationProps {
   session: VideoSession;
@@ -71,14 +82,103 @@ const VideoConsultation: React.FC<VideoConsultationProps> = ({
   const [chatMessage, setChatMessage] = useState('');
   const [chatMessages, setChatMessages] = useState<Message[]>([]);
   const [isRecording, setIsRecording] = useState(false);
-  const [connectionQuality, setConnectionQuality] = useState<'excellent' | 'good' | 'poor'>('good');
+  const [connectionQuality, setConnectionQuality] = useState<ConnectionQuality | null>(null);
   const [callDuration, setCallDuration] = useState(0);
-  
+  const [isConnected, setIsConnected] = useState(false);
+  const [remoteStreams, setRemoteStreams] = useState<Map<string, MediaStream>>(new Map());
+  const [snackbarMessage, setSnackbarMessage] = useState<string>('');
+
   const localVideoRef = useRef<HTMLVideoElement>(null);
-  const remoteVideoRef = useRef<HTMLVideoElement>(null);
+  const remoteVideoRefs = useRef<Map<string, HTMLVideoElement>>(new Map());
+  const localStreamRef = useRef<MediaStream | null>(null);
+  const screenStreamRef = useRef<MediaStream | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
 
   // Mock current user (in real app, this would come from context/auth)
   const currentUser = { id: 1, role: 'patient' as const };
+
+  // Initialize WebRTC connection
+  const initializeWebRTC = useCallback(async () => {
+    try {
+      // Get local media stream
+      const localStream = await webRTCService.getLocalStream(session.id);
+      localStreamRef.current = localStream;
+
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = localStream;
+      }
+
+      // Initialize connections for all participants
+      for (const participant of session.participants) {
+        if (participant.id !== currentUser.id.toString()) {
+          const pc = await webRTCService.initializeConnection(session.id, participant.id);
+          await webRTCService.addStreamToConnection(session.id, participant.id, localStream);
+
+          // Handle remote streams
+          pc.ontrack = (event) => {
+            const remoteStream = event.streams[0];
+            setRemoteStreams(prev => new Map(prev.set(participant.id, remoteStream)));
+
+            // Update video element
+            const videoRef = remoteVideoRefs.current.get(participant.id);
+            if (videoRef) {
+              videoRef.srcObject = remoteStream;
+            }
+          };
+
+          pc.onicecandidate = (event) => {
+            if (event.candidate) {
+              // In real implementation, send ICE candidate to signaling server
+              console.log('ICE candidate:', event.candidate);
+            }
+          };
+
+          // Create and send offer
+          const offer = await webRTCService.createOffer(session.id, participant.id);
+          // In real implementation, send offer to signaling server
+          console.log('Offer created:', offer);
+        }
+      }
+
+      setIsConnected(true);
+      setSnackbarMessage('Connected to video call');
+    } catch (error) {
+      console.error('Failed to initialize WebRTC:', error);
+      setSnackbarMessage('Failed to connect to video call');
+    }
+  }, [session.id, session.participants, currentUser.id]);
+
+  // Monitor connection quality
+  useEffect(() => {
+    if (!isConnected) return;
+
+    const qualityCheck = setInterval(() => {
+      const qualities = webRTCService.getAllConnectionQualities(session.id);
+      if (qualities.length > 0) {
+        // Use the worst quality as the overall quality
+        const worstQuality = qualities.reduce((worst, current) =>
+          (current.level === 'poor' ? 1 : current.level === 'fair' ? 2 : current.level === 'good' ? 3 : 4) <
+          (worst.level === 'poor' ? 1 : worst.level === 'fair' ? 2 : worst.level === 'good' ? 3 : 4)
+            ? current : worst
+        );
+        setConnectionQuality(worstQuality);
+      }
+    }, 2000);
+
+    return () => clearInterval(qualityCheck);
+  }, [isConnected, session.id]);
+
+  // Handle incoming messages
+  useEffect(() => {
+    const handleMessage = (event: CustomEvent) => {
+      const { message } = event.detail;
+      setChatMessages(prev => [...prev, message]);
+    };
+
+    window.addEventListener('webrtc-message', handleMessage as EventListener);
+    return () => window.removeEventListener('webrtc-message', handleMessage as EventListener);
+  }, []);
 
   useEffect(() => {
     // Start call timer
@@ -86,17 +186,21 @@ const VideoConsultation: React.FC<VideoConsultationProps> = ({
       setCallDuration(prev => prev + 1);
     }, 1000);
 
-    // Simulate connection quality monitoring
-    const qualityCheck = setInterval(() => {
-      const qualities: ('excellent' | 'good' | 'poor')[] = ['excellent', 'good', 'poor'];
-      setConnectionQuality(qualities[Math.floor(Math.random() * qualities.length)]);
-    }, 10000);
+    // Initialize WebRTC when component mounts
+    initializeWebRTC();
 
     return () => {
       clearInterval(timer);
-      clearInterval(qualityCheck);
+      // Cleanup WebRTC connections
+      webRTCService.cleanup(session.id);
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach(track => track.stop());
+      }
+      if (screenStreamRef.current) {
+        screenStreamRef.current.getTracks().forEach(track => track.stop());
+      }
     };
-  }, []);
+  }, [initializeWebRTC, session.id]);
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -104,33 +208,165 @@ const VideoConsultation: React.FC<VideoConsultationProps> = ({
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const toggleVideo = () => {
+  const getConnectionQualityIcon = () => {
+    return getQualityIcon(connectionQuality);
+  };
+
+  const getQualityIcon = (quality: ConnectionQuality | null) => {
+    if (!quality) return <WifiOff color="error" />;
+
+    switch (quality.level) {
+      case 'excellent':
+        return <SignalCellular4Bar color="success" />;
+      case 'good':
+        return <SignalCellular3Bar color="primary" />;
+      case 'fair':
+        return <SignalCellular2Bar color="warning" />;
+      case 'poor':
+        return <SignalCellular1Bar color="error" />;
+      default:
+        return <SignalCellular0Bar color="error" />;
+    }
+  };
+
+      const getConnectionQualityColor = () => {
+    if (!connectionQuality) return 'error';
+    switch (connectionQuality.level) {
+      case 'excellent': return 'success';
+      case 'good': return 'primary';
+      case 'fair': return 'warning';
+      case 'poor': return 'error';
+      default: return 'error';
+    }
+  };
+
+  const toggleVideo = async () => {
+    if (!localStreamRef.current) return;
+
+    const videoTracks = localStreamRef.current.getVideoTracks();
+    videoTracks.forEach(track => {
+      track.enabled = !isVideoEnabled;
+    });
+
     setIsVideoEnabled(!isVideoEnabled);
-    // In real implementation, this would control the actual video stream
   };
 
-  const toggleAudio = () => {
+  const toggleAudio = async () => {
+    if (!localStreamRef.current) return;
+
+    const audioTracks = localStreamRef.current.getAudioTracks();
+    audioTracks.forEach(track => {
+      track.enabled = !isAudioEnabled;
+    });
+
     setIsAudioEnabled(!isAudioEnabled);
-    // In real implementation, this would control the actual audio stream
   };
 
-  const toggleScreenShare = () => {
-    setIsScreenSharing(!isScreenSharing);
-    // In real implementation, this would start/stop screen sharing
+  const toggleScreenShare = async () => {
+    try {
+      if (isScreenSharing) {
+        // Stop screen sharing
+        if (screenStreamRef.current) {
+          screenStreamRef.current.getTracks().forEach(track => track.stop());
+          screenStreamRef.current = null;
+        }
+
+        // Switch back to camera
+        if (localStreamRef.current && localVideoRef.current) {
+          localVideoRef.current.srcObject = localStreamRef.current;
+        }
+
+        setIsScreenSharing(false);
+        setSnackbarMessage('Screen sharing stopped');
+      } else {
+        // Start screen sharing
+        const screenStream = await (navigator.mediaDevices as any).getDisplayMedia({
+          video: { mediaSource: 'screen' },
+          audio: true
+        });
+
+        screenStreamRef.current = screenStream;
+
+        // Replace video track in all peer connections
+        const screenVideoTrack = screenStream.getVideoTracks()[0];
+        const screenAudioTrack = screenStream.getAudioTracks()[0];
+
+        // Update local video display
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = screenStream;
+        }
+
+        // Handle screen share end
+        screenVideoTrack.onended = () => {
+          toggleScreenShare();
+        };
+
+        setIsScreenSharing(true);
+        setSnackbarMessage('Screen sharing started');
+      }
+    } catch (error) {
+      console.error('Screen sharing failed:', error);
+      setSnackbarMessage('Screen sharing not supported or denied');
+    }
   };
 
-  const toggleRecording = () => {
-    setIsRecording(!isRecording);
-    // In real implementation, this would start/stop recording
+  const toggleRecording = async () => {
+    try {
+      if (isRecording) {
+        // Stop recording
+        if (mediaRecorderRef.current) {
+          mediaRecorderRef.current.stop();
+          mediaRecorderRef.current = null;
+        }
+        setIsRecording(false);
+        setSnackbarMessage('Recording stopped');
+      } else {
+        // Start recording
+        const stream = localStreamRef.current;
+        if (!stream) {
+          setSnackbarMessage('No stream available for recording');
+          return;
+        }
+
+        const mediaRecorder = new MediaRecorder(stream, {
+          mimeType: 'video/webm;codecs=vp9'
+        });
+
+        recordedChunksRef.current = [];
+
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data.size > 0) {
+            recordedChunksRef.current.push(event.data);
+          }
+        };
+
+        mediaRecorder.onstop = () => {
+          const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
+          const url = URL.createObjectURL(blob);
+
+          // In real implementation, upload to server
+          console.log('Recording saved:', url);
+          setSnackbarMessage('Recording saved');
+        };
+
+        mediaRecorder.start();
+        mediaRecorderRef.current = mediaRecorder;
+        setIsRecording(true);
+        setSnackbarMessage('Recording started');
+      }
+    } catch (error) {
+      console.error('Recording failed:', error);
+      setSnackbarMessage('Recording not supported');
+    }
   };
 
-  const sendChatMessage = () => {
+  const sendChatMessage = async () => {
     if (!chatMessage.trim()) return;
 
     const newMessage: Message = {
       id: Date.now().toString(),
       senderId: currentUser.id.toString(),
-      receiverId: session.participants.find(p => p.role !== currentUser.role)?.id.toString() || '0',
+      receiverId: session.participants.find(p => p.id !== currentUser.id.toString())?.id || '0',
       content: chatMessage,
       type: 'text',
       timestamp: new Date().toISOString(),
@@ -139,31 +375,25 @@ const VideoConsultation: React.FC<VideoConsultationProps> = ({
       isEncrypted: true
     };
 
+    // Add to local chat
     setChatMessages(prev => [...prev, newMessage]);
+
+    // Send via WebRTC data channel to all participants
+    for (const participant of session.participants) {
+      if (participant.id !== currentUser.id.toString()) {
+        const sent = await webRTCService.sendMessage(session.id, participant.id, newMessage);
+        if (!sent) {
+          console.warn(`Failed to send message to ${participant.id}`);
+        }
+      }
+    }
+
     setChatMessage('');
   };
 
   const handleEndCall = () => {
     if (window.confirm('Are you sure you want to end the consultation?')) {
       onEndCall();
-    }
-  };
-
-  const getConnectionQualityColor = (): 'success' | 'warning' | 'error' | 'info' => {
-    switch (connectionQuality) {
-      case 'excellent': return 'success';
-      case 'good': return 'warning';
-      case 'poor': return 'error';
-      default: return 'info';
-    }
-  };
-
-  const getConnectionQualityIcon = () => {
-    switch (connectionQuality) {
-      case 'excellent': return <CheckCircle />;
-      case 'good': return <Warning />;
-      case 'poor': return <Warning />;
-      default: return <Info />;
     }
   };
 
@@ -184,7 +414,7 @@ const VideoConsultation: React.FC<VideoConsultationProps> = ({
           </Typography>
           <Chip
             icon={getConnectionQualityIcon()}
-            label={`${connectionQuality.toUpperCase()} Connection`}
+            label={`${connectionQuality?.level.toUpperCase() || 'UNKNOWN'} Connection`}
             color={getConnectionQualityColor()}
             size="small"
           />
@@ -211,10 +441,76 @@ const VideoConsultation: React.FC<VideoConsultationProps> = ({
 
       {/* Video Area */}
       <Box sx={{ flex: 1, position: 'relative', display: 'flex' }}>
-        {/* Main Video (Remote) */}
-        <Box sx={{ flex: 1, position: 'relative' }}>
+        {/* Remote Videos */}
+        <Box sx={{
+          flex: 1,
+          display: 'grid',
+          gridTemplateColumns: remoteStreams.size > 1 ? '1fr 1fr' : '1fr',
+          gap: 1,
+          p: 1
+        }}>
+          {Array.from(remoteStreams.entries()).map(([participantId, stream]) => {
+            const participant = session.participants.find(p => p.id === participantId);
+            return (
+              <Box key={participantId} sx={{ position: 'relative', borderRadius: 2, overflow: 'hidden' }}>
+                <video
+                  ref={(el) => {
+                    if (el) remoteVideoRefs.current.set(participantId, el);
+                  }}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    backgroundColor: '#333'
+                  }}
+                  autoPlay
+                  playsInline
+                />
+
+                {/* Participant Info */}
+                <Box sx={{
+                  position: 'absolute',
+                  bottom: 8,
+                  left: 8,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  bgcolor: 'rgba(0,0,0,0.7)',
+                  borderRadius: 2,
+                  p: 1,
+                  color: 'white'
+                }}>
+                  <Avatar sx={{ width: 24, height: 24 }}>
+                    {participant?.name[0]}
+                  </Avatar>
+                  <Typography variant="body2">
+                    {participant?.name}
+                  </Typography>
+                  <Chip
+                    label={participant?.role}
+                    size="small"
+                    color="primary"
+                  />
+                </Box>
+              </Box>
+            );
+          })}
+        </Box>
+
+        {/* Local Video (Picture-in-Picture) */}
+        <Box sx={{
+          position: 'absolute',
+          top: 16,
+          right: 16,
+          width: 200,
+          height: 150,
+          borderRadius: 2,
+          overflow: 'hidden',
+          border: '2px solid white',
+          boxShadow: 3
+        }}>
           <video
-            ref={remoteVideoRef}
+            ref={localVideoRef}
             style={{
               width: '100%',
               height: '100%',
@@ -223,94 +519,37 @@ const VideoConsultation: React.FC<VideoConsultationProps> = ({
             }}
             autoPlay
             playsInline
-          />
-          
-          {/* Remote Participant Info */}
-          <Box sx={{
-            position: 'absolute',
-            bottom: 16,
-            left: 16,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1,
-            bgcolor: 'rgba(0,0,0,0.7)',
-            borderRadius: 2,
-            p: 1,
-            color: 'white'
-          }}>
-            <Avatar sx={{ width: 32, height: 32 }}>
-              {session.participants.find(p => p.role !== currentUser.role)?.name[0]}
-            </Avatar>
-            <Typography variant="body2">
-              {session.participants.find(p => p.role !== currentUser.role)?.name}
-            </Typography>
-            <Chip
-              label={session.participants.find(p => p.role !== currentUser.role)?.role}
-              size="small"
-              color="primary"
-            />
-          </Box>
-
-          {/* Screen Share Indicator */}
-          {isScreenSharing && (
-            <Box sx={{
-              position: 'absolute',
-              top: 16,
-              left: 16,
-              bgcolor: 'rgba(255,0,0,0.8)',
-              color: 'white',
-              px: 2,
-              py: 1,
-              borderRadius: 1
-            }}>
-              <Typography variant="body2">🖥️ Screen Sharing Active</Typography>
-            </Box>
-          )}
-        </Box>
-
-        {/* Local Video (Picture-in-Picture) */}
-        <Box sx={{
-          position: 'absolute',
-          top: 16,
-          right: showChat ? 336 : 16,
-          width: 200,
-          height: 150,
-          borderRadius: 2,
-          overflow: 'hidden',
-          border: '2px solid white',
-          transition: 'right 0.3s ease'
-        }}>
-          <video
-            ref={localVideoRef}
-            style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-              backgroundColor: '#333',
-              transform: 'scaleX(-1)' // Mirror effect for local video
-            }}
-            autoPlay
-            playsInline
             muted
           />
-          
-          {!isVideoEnabled && (
-            <Box sx={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              bgcolor: 'rgba(0,0,0,0.8)',
-              color: 'white'
-            }}>
-              <VideocamOff />
-            </Box>
-          )}
+          <Box sx={{
+            position: 'absolute',
+            bottom: 4,
+            left: 4,
+            bgcolor: 'rgba(0,0,0,0.7)',
+            color: 'white',
+            px: 1,
+            py: 0.5,
+            borderRadius: 1
+          }}>
+            <Typography variant="caption">You</Typography>
+          </Box>
         </Box>
+
+        {/* Screen Share Indicator */}
+        {isScreenSharing && (
+          <Box sx={{
+            position: 'absolute',
+            top: 16,
+            left: 16,
+            bgcolor: 'rgba(255,0,0,0.8)',
+            color: 'white',
+            px: 2,
+            py: 1,
+            borderRadius: 1
+          }}>
+            <Typography variant="body2">🖥️ Screen Sharing Active</Typography>
+          </Box>
+        )}
 
         {/* Chat Panel */}
         {showChat && (
@@ -370,6 +609,7 @@ const VideoConsultation: React.FC<VideoConsultationProps> = ({
             </Box>
           </Paper>
         )}
+
       </Box>
 
       {/* Bottom Controls */}
@@ -508,10 +748,11 @@ const VideoConsultation: React.FC<VideoConsultationProps> = ({
             <Grid item xs={12}>
               <Typography variant="h6" gutterBottom>Connection Quality</Typography>
               <Alert 
-                severity={getConnectionQualityColor()} 
+                severity={connectionQuality?.level === 'excellent' || connectionQuality?.level === 'good' ? 'success' :
+                         connectionQuality?.level === 'fair' ? 'warning' : 'error'} 
                 icon={getConnectionQualityIcon()}
               >
-                Connection quality is {connectionQuality}
+                Connection quality is {connectionQuality?.level || 'unknown'}
               </Alert>
             </Grid>
             
@@ -532,6 +773,22 @@ const VideoConsultation: React.FC<VideoConsultationProps> = ({
           <Button onClick={() => setShowSettings(false)}>Close</Button>
         </DialogActions>
       </Dialog>
+
+      {/* Snackbar for notifications */}
+      <Snackbar
+        open={!!snackbarMessage}
+        autoHideDuration={4000}
+        onClose={() => setSnackbarMessage('')}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setSnackbarMessage('')}
+          severity="info"
+          sx={{ width: '100%' }}
+        >
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

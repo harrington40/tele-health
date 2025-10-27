@@ -58,13 +58,20 @@ import {
   Assessment,
   TrendingUp,
   LocalHospital,
+  Call,
+  Chat,
+  Settings,
+  ExitToApp,
   SmartToy,
-  Send,
-  EventNote,
-  PersonAdd,
   Timer,
   Queue,
+  PersonAdd,
+  EventNote,
+  Send
 } from '@mui/icons-material';
+import VideoConsultation from '../components/VideoConsultation';
+import MessagingSystem from '../components/MessagingSystem';
+import { VideoSession, QueueEntry } from '../types';
 import { useNavigate } from 'react-router-dom';
 
 interface Patient {
@@ -110,6 +117,12 @@ const ProviderDashboard: React.FC = () => {
     push: false,
     reminderHours: 24,
   });
+
+  // Video and chat state
+  const [activeVideoSession, setActiveVideoSession] = useState<VideoSession | null>(null);
+  const [showVideoCall, setShowVideoCall] = useState(false);
+  const [showChat, setShowChat] = useState(false);
+  const [selectedChatParticipant, setSelectedChatParticipant] = useState<number | null>(null);
 
   // Mock data - in real app, this would come from API
   const [waitingRoom, setWaitingRoom] = useState<Patient[]>([
@@ -262,6 +275,86 @@ const ProviderDashboard: React.FC = () => {
     console.log('Sending notification to:', selectedPatient?.name);
     setNotificationDialog(false);
     setSelectedPatient(null);
+  };
+
+  // Video and chat handlers
+  const handleStartVideoCall = (patientId: number) => {
+    const patient = waitingRoom.find(p => p.id === patientId);
+    if (!patient) return;
+
+    const videoSession: VideoSession = {
+      id: `session-${Date.now()}`,
+      appointmentId: patient.id,
+      doctorId: 1, // Current doctor ID
+      patientId: patient.id,
+      roomId: `room-${patient.id}`,
+      participants: [
+        {
+          id: '1',
+          name: 'Dr. Provider',
+          role: 'doctor',
+          isConnected: true,
+          hasVideo: true,
+          hasAudio: true,
+          joinedAt: new Date().toISOString()
+        },
+        {
+          id: patient.id.toString(),
+          name: patient.name,
+          role: 'patient',
+          isConnected: false,
+          hasVideo: false,
+          hasAudio: false,
+          joinedAt: new Date().toISOString()
+        }
+      ],
+      startTime: new Date().toISOString(),
+      status: 'waiting',
+      settings: {
+        enableChat: true,
+        enableRecording: true,
+        enableScreenShare: true,
+        maxDuration: 60,
+        autoStartRecording: false
+      }
+    };
+
+    setActiveVideoSession(videoSession);
+    setShowVideoCall(true);
+
+    // Update patient status
+    setWaitingRoom(prev =>
+      prev.map(p =>
+        p.id === patientId
+          ? { ...p, status: 'in-consultation' as const }
+          : p
+      )
+    );
+  };
+
+  const handleStartChat = (patientId: number) => {
+    setSelectedChatParticipant(patientId);
+    setShowChat(true);
+  };
+
+  const handleEndVideoCall = () => {
+    if (activeVideoSession) {
+      // Update patient status back to waiting if call ended early
+      setWaitingRoom(prev =>
+        prev.map(p =>
+          p.id === activeVideoSession.patientId
+            ? { ...p, status: 'waiting' as const }
+            : p
+        )
+      );
+    }
+
+    setActiveVideoSession(null);
+    setShowVideoCall(false);
+  };
+
+  const handleUpdateVideoSession = (session: VideoSession) => {
+    setActiveVideoSession(session);
   };
 
   const getPriorityColor = (priority: string) => {
@@ -469,10 +562,19 @@ const ProviderDashboard: React.FC = () => {
                                 <Notifications />
                               </IconButton>
                             </Tooltip>
-                            <Tooltip title="Start Consultation">
+                            <Tooltip title="Start Chat">
                               <IconButton
                                 size="small"
-                                onClick={() => handleStartConsultation(patient)}
+                                onClick={() => handleStartChat(patient.id)}
+                                color="info"
+                              >
+                                <Chat />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Start Video Call">
+                              <IconButton
+                                size="small"
+                                onClick={() => handleStartVideoCall(patient.id)}
                                 color="success"
                               >
                                 <VideoCall />
@@ -690,6 +792,39 @@ const ProviderDashboard: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Video Consultation Dialog */}
+      {showVideoCall && activeVideoSession && (
+        <Dialog
+          fullScreen
+          open={showVideoCall}
+          onClose={handleEndVideoCall}
+        >
+          <VideoConsultation
+            session={activeVideoSession}
+            onEndCall={handleEndVideoCall}
+            onUpdateSession={handleUpdateVideoSession}
+          />
+        </Dialog>
+      )}
+
+      {/* Chat Dialog */}
+      {showChat && selectedChatParticipant && (
+        <Dialog
+          fullScreen
+          open={showChat}
+          onClose={() => setShowChat(false)}
+        >
+          <MessagingSystem
+            currentUser={{ id: 1, role: 'doctor', name: 'Dr. Provider' }}
+            sessionId={`chat-${selectedChatParticipant}`}
+            onStartVideoCall={(patientId) => {
+              handleStartVideoCall(patientId);
+              setShowChat(false);
+            }}
+          />
+        </Dialog>
+      )}
 
       {/* Floating Action Button for Quick Actions */}
       <Fab

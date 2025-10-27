@@ -67,17 +67,20 @@ import {
   Error as ErrorIcon
 } from '@mui/icons-material';
 import { Message, ChatRoom, Participant, Doctor, Patient } from '../types';
+import { webRTCService } from '../services/webrtc.service';
 
 interface MessagingSystemProps {
   currentUser: { id: number; role: 'doctor' | 'patient'; name: string; avatar?: string };
   onStartVideoCall?: (participantId: number) => void;
   onStartVoiceCall?: (participantId: number) => void;
+  sessionId?: string; // For WebRTC integration
 }
 
 const MessagingSystem: React.FC<MessagingSystemProps> = ({
   currentUser,
   onStartVideoCall,
-  onStartVoiceCall
+  onStartVoiceCall,
+  sessionId
 }) => {
   const [selectedChat, setSelectedChat] = useState<ChatRoom | null>(null);
   const [message, setMessage] = useState('');
@@ -91,11 +94,77 @@ const MessagingSystem: React.FC<MessagingSystemProps> = ({
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [attachmentMenu, setAttachmentMenu] = useState<null | HTMLElement>(null);
   const [messageMenu, setMessageMenu] = useState<{ anchorEl: HTMLElement; messageId: string } | null>(null);
-  
+  const [isConnected, setIsConnected] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('disconnected');
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
 
-  // Mock data - in real app, this would come from API
+  // WebRTC message handling
+  useEffect(() => {
+    if (!sessionId) return;
+
+    const handleWebRTCMessage = (event: CustomEvent) => {
+      const { message } = event.detail;
+      if (selectedChat && selectedChat.participants.includes(message.senderId)) {
+        setMessages(prev => {
+          // Avoid duplicates
+          if (prev.some(m => m.id === message.id)) return prev;
+          return [...prev, message];
+        });
+
+        // Mark as read if chat is active
+        if (selectedChat.id === message.receiverId || selectedChat.participants.includes(message.senderId)) {
+          // In real implementation, mark message as read on server
+        }
+      }
+    };
+
+    window.addEventListener('webrtc-message', handleWebRTCMessage as EventListener);
+    setConnectionStatus('connected');
+    setIsConnected(true);
+
+    return () => {
+      window.removeEventListener('webrtc-message', handleWebRTCMessage as EventListener);
+    };
+  }, [sessionId, selectedChat]);
+
+  // Handle chat selection and load messages
+  useEffect(() => {
+    if (selectedChat) {
+      // Load messages for selected chat
+      // In real implementation, this would fetch from API
+      const mockMessages: Message[] = [
+        {
+          id: '1',
+          senderId: selectedChat.participants[0],
+          receiverId: selectedChat.participants[1],
+          content: 'Hello! How are you feeling today?',
+          type: 'text',
+          timestamp: new Date(Date.now() - 300000).toISOString(),
+          isRead: true,
+          isDelivered: true,
+          isEncrypted: true
+        },
+        {
+          id: '2',
+          senderId: selectedChat.participants[1],
+          receiverId: selectedChat.participants[0],
+          content: 'I\'m doing better, thank you. The medication is helping.',
+          type: 'text',
+          timestamp: new Date(Date.now() - 240000).toISOString(),
+          isRead: true,
+          isDelivered: true,
+          isEncrypted: true
+        }
+      ];
+      setMessages(mockMessages);
+    }
+  }, [selectedChat]);
+
+  // Initialize mock data on component mount
   useEffect(() => {
     const mockChatRooms: ChatRoom[] = [
       {
@@ -149,9 +218,12 @@ const MessagingSystem: React.FC<MessagingSystemProps> = ({
       }
     ];
     setChatRooms(mockChatRooms);
-    
-    // Mock messages for selected chat
-    const mockMessages: Message[] = [
+  }, []); // Empty dependency array for initialization
+
+  // Mock messages for selected chat
+  useEffect(() => {
+    if (selectedChat) {
+      const mockMessages: Message[] = [
       {
         id: '1',
         senderId: currentUser.role === 'doctor' ? '2' : '1',
@@ -187,7 +259,70 @@ const MessagingSystem: React.FC<MessagingSystemProps> = ({
       }
     ];
     setMessages(mockMessages);
-  }, [currentUser]);
+    }
+  }, [selectedChat]);
+
+  // WebRTC message handling
+  useEffect(() => {
+    if (!sessionId) return;
+
+    const handleWebRTCMessage = (event: CustomEvent) => {
+      const { message } = event.detail;
+      if (selectedChat && selectedChat.participants.includes(message.senderId)) {
+        setMessages(prev => {
+          // Avoid duplicates
+          if (prev.some(m => m.id === message.id)) return prev;
+          return [...prev, message];
+        });
+
+        // Mark as read if chat is active
+        if (selectedChat.id === message.receiverId || selectedChat.participants.includes(message.senderId)) {
+          // In real implementation, mark message as read on server
+        }
+      }
+    };
+
+    window.addEventListener('webrtc-message', handleWebRTCMessage as EventListener);
+    setConnectionStatus('connected');
+    setIsConnected(true);
+
+    return () => {
+      window.removeEventListener('webrtc-message', handleWebRTCMessage as EventListener);
+    };
+  }, [sessionId, selectedChat]);
+
+  // Handle chat selection and load messages
+  useEffect(() => {
+    if (selectedChat) {
+      // Load messages for selected chat
+      // In real implementation, this would fetch from API
+      const mockMessages: Message[] = [
+        {
+          id: '1',
+          senderId: selectedChat.participants[0],
+          receiverId: selectedChat.participants[1],
+          content: 'Hello! How are you feeling today?',
+          type: 'text',
+          timestamp: new Date(Date.now() - 300000).toISOString(),
+          isRead: true,
+          isDelivered: true,
+          isEncrypted: true
+        },
+        {
+          id: '2',
+          senderId: selectedChat.participants[1],
+          receiverId: selectedChat.participants[0],
+          content: 'I\'m doing better, thank you. The medication is helping.',
+          type: 'text',
+          timestamp: new Date(Date.now() - 240000).toISOString(),
+          isRead: true,
+          isDelivered: true,
+          isEncrypted: true
+        }
+      ];
+      setMessages(mockMessages);
+    }
+  }, [selectedChat]);
 
   useEffect(() => {
     scrollToBottom();
@@ -226,7 +361,7 @@ const MessagingSystem: React.FC<MessagingSystemProps> = ({
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const sendMessage = () => {
+  const sendMessage = async () => {
     if (!message.trim() || !selectedChat) return;
 
     const newMessage: Message = {
@@ -244,12 +379,31 @@ const MessagingSystem: React.FC<MessagingSystemProps> = ({
     setMessages(prev => [...prev, newMessage]);
     setMessage('');
 
-    // Simulate message delivery
-    setTimeout(() => {
-      setMessages(prev => prev.map(msg => 
-        msg.id === newMessage.id ? { ...msg, isDelivered: true } : msg
-      ));
-    }, 1000);
+    // Send via WebRTC if in a session
+    if (sessionId && isConnected) {
+      const receiverId = selectedChat.participants.find(p => p !== currentUser.id.toString());
+      if (receiverId) {
+        const sent = await webRTCService.sendMessage(sessionId, receiverId, newMessage);
+        if (sent) {
+          setMessages(prev => prev.map(msg =>
+            msg.id === newMessage.id ? { ...msg, isDelivered: true } : msg
+          ));
+        } else {
+          // Handle send failure
+          setMessages(prev => prev.map(msg =>
+            msg.id === newMessage.id ? { ...msg, isDelivered: false } : msg
+          ));
+        }
+      }
+    } else {
+      // Fallback to API for non-WebRTC messaging
+      // Simulate message delivery
+      setTimeout(() => {
+        setMessages(prev => prev.map(msg =>
+          msg.id === newMessage.id ? { ...msg, isDelivered: true } : msg
+        ));
+      }, 1000);
+    }
   };
 
   const startRecording = () => {
@@ -447,9 +601,19 @@ const MessagingSystem: React.FC<MessagingSystemProps> = ({
                 <Typography variant="h6">
                   {getParticipantName(selectedChat.participants.find(p => p !== currentUser.id.toString()) || '0')}
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {isTyping ? 'Typing...' : 'Online'}
-                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    {isTyping ? 'Typing...' : 'Online'}
+                  </Typography>
+                  {sessionId && (
+                    <Chip
+                      size="small"
+                      label={connectionStatus}
+                      color={connectionStatus === 'connected' ? 'success' : connectionStatus === 'connecting' ? 'warning' : 'error'}
+                      icon={connectionStatus === 'connected' ? <CheckCircle /> : connectionStatus === 'connecting' ? <Schedule /> : <ErrorIcon />}
+                    />
+                  )}
+                </Box>
               </Box>
             </Box>
             
