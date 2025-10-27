@@ -1,0 +1,3 @@
+Help on method connect in module rethinkdb:
+
+ccoonnnneecctt(*args, **kwargs) method of rethinkdb.RethinkDB instance

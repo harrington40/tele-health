@@ -1,0 +1,119 @@
+syntax = "proto3";
+
+package consultation;
+
+service ConsultationService {
+  rpc CreateConsultation(CreateConsultationRequest) returns (CreateConsultationResponse);
+  rpc JoinConsultation(JoinConsultationRequest) returns (JoinConsultationResponse);
+  rpc EndConsultation(EndConsultationRequest) returns (EndConsultationResponse);
+  rpc GetConsultationHistory(GetConsultationHistoryRequest) returns (GetConsultationHistoryResponse);
+  rpc SendMessage(SendMessageRequest) returns (SendMessageResponse);
+  rpc GetMessages(GetMessagesRequest) returns (stream MessageResponse);
+}
+
+message CreateConsultationRequest {
+  string patientId = 1;
+  string doctorId = 2;
+  string appointmentId = 3;
+  ConsultationType type = 4;
+}
+
+message CreateConsultationResponse {
+  bool success = 1;
+  string consultationId = 2;
+  string message = 3;
+}
+
+message JoinConsultationRequest {
+  string consultationId = 1;
+  string userId = 2;
+}
+
+message JoinConsultationResponse {
+  bool success = 1;
+  string sessionToken = 2;
+  repeated Participant participants = 3;
+}
+
+message EndConsultationRequest {
+  string consultationId = 1;
+  string userId = 2;
+  string notes = 3;
+  repeated string prescriptions = 4;
+}
+
+message EndConsultationResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message GetConsultationHistoryRequest {
+  string userId = 1;
+  int32 limit = 2;
+  int32 offset = 3;
+}
+
+message GetConsultationHistoryResponse {
+  repeated ConsultationRecord consultations = 1;
+  int32 total = 2;
+}
+
+message SendMessageRequest {
+  string consultationId = 1;
+  string senderId = 2;
+  string content = 3;
+  MessageType type = 4;
+}
+
+message SendMessageResponse {
+  bool success = 1;
+  string messageId = 2;
+}
+
+message GetMessagesRequest {
+  string consultationId = 1;
+  string userId = 2;
+}
+
+message MessageResponse {
+  string messageId = 1;
+  string senderId = 2;
+  string senderName = 3;
+  string content = 4;
+  MessageType type = 5;
+  string timestamp = 6;
+}
+
+message Participant {
+  string userId = 1;
+  string name = 2;
+  string role = 3;
+  bool isOnline = 4;
+}
+
+message ConsultationRecord {
+  string consultationId = 1;
+  string patientId = 2;
+  string doctorId = 3;
+  string patientName = 4;
+  string doctorName = 5;
+  string startTime = 6;
+  string endTime = 7;
+  ConsultationType type = 8;
+  string status = 9;
+  string notes = 10;
+}
+
+enum ConsultationType {
+  VIDEO = 0;
+  AUDIO = 1;
+  CHAT = 2;
+  EMERGENCY = 3;
+}
+
+enum MessageType {
+  TEXT = 0;
+  IMAGE = 1;
+  FILE = 2;
+  SYSTEM = 3;
+}
