@@ -17,6 +17,8 @@ import {
   Divider,
   Paper,
   Alert,
+  Dialog,
+  DialogContent,
 } from '@mui/material';
 import {
   Favorite,
@@ -37,6 +39,8 @@ import {
   Person,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import VideoConsultation from '../components/VideoConsultation';
+import { VideoSession } from '../types';
 
 interface HealthMetric {
   id: string;
@@ -81,6 +85,8 @@ interface Medication {
 const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const [healthScore] = useState(85);
+  const [showVideoDialog, setShowVideoDialog] = useState(false);
+  const [activeVideoSession, setActiveVideoSession] = useState<VideoSession | null>(null);
 
   // Mock data - in real app, this would come from API
   const healthMetrics: HealthMetric[] = [
@@ -194,6 +200,55 @@ const DashboardPage: React.FC = () => {
       notification: 'Your prescription refill is ready for pickup at your preferred pharmacy.'
     }
   ];
+
+  // Video call handlers
+  const handleJoinCall = (appointment: Appointment) => {
+    // Create a mock video session for the appointment
+    const mockSession: VideoSession = {
+      id: `session-${appointment.id}`,
+      appointmentId: parseInt(appointment.id), // Convert string to number
+      doctorId: 1, // Mock doctor ID
+      patientId: 1, // Mock patient ID (current user)
+      roomId: `room-${appointment.id}`,
+      participants: [
+        {
+          id: '1', // Mock doctor ID
+          name: appointment.doctor,
+          role: 'Doctor',
+          isConnected: false,
+          hasVideo: true,
+          hasAudio: true,
+          joinedAt: new Date().toISOString()
+        },
+        {
+          id: '1', // Mock patient ID (current user)
+          name: 'You', // In real app, get from user context
+          role: 'Patient',
+          isConnected: true,
+          hasVideo: true,
+          hasAudio: true,
+          joinedAt: new Date().toISOString()
+        }
+      ],
+      startTime: new Date().toISOString(),
+      status: 'waiting',
+      settings: {
+        enableChat: true,
+        enableRecording: false,
+        enableScreenShare: true,
+        maxDuration: 60,
+        autoStartRecording: false
+      }
+    };
+
+    setActiveVideoSession(mockSession);
+    setShowVideoDialog(true);
+  };
+
+  const handleEndVideoCall = () => {
+    setActiveVideoSession(null);
+    setShowVideoDialog(false);
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -388,7 +443,12 @@ const DashboardPage: React.FC = () => {
                               {appointment.date} at {appointment.time}
                             </Typography>
                             <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
-                              <Button size="small" variant="contained" color="primary">
+                              <Button
+                                size="small"
+                                variant="contained"
+                                color="primary"
+                                onClick={() => handleJoinCall(appointment)}
+                              >
                                 Join Call
                               </Button>
                               <Button size="small" variant="outlined">
@@ -706,6 +766,27 @@ const DashboardPage: React.FC = () => {
           </Grid>
         </Grid>
       </Box>
+
+      {/* Video Consultation Dialog */}
+      <Dialog
+        open={showVideoDialog}
+        onClose={handleEndVideoCall}
+        maxWidth={false}
+        fullWidth
+        PaperProps={{
+          sx: { width: '100vw', height: '100vh', maxWidth: 'none', maxHeight: 'none', margin: 0 }
+        }}
+      >
+        <DialogContent sx={{ p: 0 }}>
+          {activeVideoSession && (
+            <VideoConsultation
+              session={activeVideoSession}
+              onEndCall={handleEndVideoCall}
+              onUpdateSession={(session) => setActiveVideoSession(session)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </Container>
   );
 };

@@ -24,7 +24,8 @@ import {
   Fab,
   Snackbar,
   Badge,
-  Divider
+  Divider,
+  CircularProgress
 } from '@mui/material';
 import {
   VideoCall,
@@ -84,9 +85,10 @@ const VideoConsultation: React.FC<VideoConsultationProps> = ({
   const [isRecording, setIsRecording] = useState(false);
   const [connectionQuality, setConnectionQuality] = useState<ConnectionQuality | null>(null);
   const [callDuration, setCallDuration] = useState(0);
-  const [isConnected, setIsConnected] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
   const [remoteStreams, setRemoteStreams] = useState<Map<string, MediaStream>>(new Map());
   const [snackbarMessage, setSnackbarMessage] = useState<string>('');
+  const [isConnected, setIsConnected] = useState(false);
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRefs = useRef<Map<string, HTMLVideoElement>>(new Map());
@@ -101,51 +103,64 @@ const VideoConsultation: React.FC<VideoConsultationProps> = ({
   // Initialize WebRTC connection
   const initializeWebRTC = useCallback(async () => {
     try {
+      console.log('🎥 Initializing WebRTC for session:', session.id);
+      setIsInitializing(true);
+      setSnackbarMessage('Requesting camera and microphone access...');
+
       // Get local media stream
+      console.log('📹 Getting local media stream...');
       const localStream = await webRTCService.getLocalStream(session.id);
       localStreamRef.current = localStream;
 
+      console.log('✅ Local stream obtained:', localStream.getTracks().length, 'tracks');
+
       if (localVideoRef.current) {
+        console.log('🎬 Setting video source...');
         localVideoRef.current.srcObject = localStream;
+        console.log('✅ Video source set');
+      } else {
+        console.error('❌ Local video ref not found');
       }
 
-      // Initialize connections for all participants
-      for (const participant of session.participants) {
-        if (participant.id !== currentUser.id.toString()) {
-          const pc = await webRTCService.initializeConnection(session.id, participant.id);
-          await webRTCService.addStreamToConnection(session.id, participant.id, localStream);
+      setSnackbarMessage('Camera and microphone access granted');
 
-          // Handle remote streams
-          pc.ontrack = (event) => {
-            const remoteStream = event.streams[0];
-            setRemoteStreams(prev => new Map(prev.set(participant.id, remoteStream)));
+      // Initialize connections for remote participants only
+      const remoteParticipants = session.participants.filter(p => p.id !== currentUser.id.toString());
+      console.log('👥 Remote participants:', remoteParticipants.length);
 
-            // Update video element
-            const videoRef = remoteVideoRefs.current.get(participant.id);
-            if (videoRef) {
-              videoRef.srcObject = remoteStream;
-            }
-          };
-
-          pc.onicecandidate = (event) => {
-            if (event.candidate) {
-              // In real implementation, send ICE candidate to signaling server
-              console.log('ICE candidate:', event.candidate);
-            }
-          };
-
-          // Create and send offer
-          const offer = await webRTCService.createOffer(session.id, participant.id);
-          // In real implementation, send offer to signaling server
-          console.log('Offer created:', offer);
-        }
+      if (remoteParticipants.length === 0) {
+        setSnackbarMessage('Waiting for other participants to join...');
+        setIsConnected(true);
+        setIsInitializing(false);
+        console.log('✅ WebRTC initialized - waiting for participants');
+        return;
       }
 
+      // In a real implementation, you would wait for signaling server
+      // For now, we'll just set up the local stream
       setIsConnected(true);
-      setSnackbarMessage('Connected to video call');
+      setIsInitializing(false);
+      setSnackbarMessage('Video consultation ready');
+      console.log('✅ WebRTC fully initialized');
+
+      // Note: Actual peer connections would be established through signaling
+      // when remote participants join the call
+
     } catch (error) {
-      console.error('Failed to initialize WebRTC:', error);
-      setSnackbarMessage('Failed to connect to video call');
+      console.error('❌ Failed to initialize WebRTC:', error);
+      setIsInitializing(false);
+
+      if (error instanceof Error) {
+        if (error.name === 'NotAllowedError') {
+          setSnackbarMessage('Camera and microphone access denied. Please allow access to start video call.');
+        } else if (error.name === 'NotFoundError') {
+          setSnackbarMessage('No camera or microphone found. Please connect a camera and microphone.');
+        } else {
+          setSnackbarMessage(`Failed to start video call: ${error.message}`);
+        }
+      } else {
+        setSnackbarMessage('Failed to connect to video call. Please check your connection.');
+      }
     }
   }, [session.id, session.participants, currentUser.id]);
 
@@ -399,6 +414,33 @@ const VideoConsultation: React.FC<VideoConsultationProps> = ({
 
   return (
     <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column', bgcolor: '#000' }}>
+      {/* Loading Overlay */}
+      {isInitializing && (
+        <Box sx={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          bgcolor: 'rgba(0,0,0,0.8)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          color: 'white'
+        }}>
+          <Box sx={{ textAlign: 'center' }}>
+            <CircularProgress size={60} sx={{ mb: 2 }} />
+            <Typography variant="h6" gutterBottom>
+              Starting Video Consultation
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Requesting camera and microphone access...
+            </Typography>
+          </Box>
+        </Box>
+      )}
+
       {/* Top Bar */}
       <Box sx={{ 
         display: 'flex', 
@@ -497,6 +539,26 @@ const VideoConsultation: React.FC<VideoConsultationProps> = ({
           })}
         </Box>
 
+        {/* No Remote Participants Message */}
+        {remoteStreams.size === 0 && (
+          <Box sx={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            textAlign: 'center',
+            color: 'white',
+            zIndex: 1
+          }}>
+            <Typography variant="h6" sx={{ mb: 1 }}>
+              Waiting for participants...
+            </Typography>
+            <Typography variant="body2" sx={{ opacity: 0.8 }}>
+              Share the consultation link to invite others
+            </Typography>
+          </Box>
+        )}
+
         {/* Local Video (Picture-in-Picture) */}
         <Box sx={{
           position: 'absolute',
@@ -520,6 +582,8 @@ const VideoConsultation: React.FC<VideoConsultationProps> = ({
             autoPlay
             playsInline
             muted
+            onLoadedData={() => console.log('🎬 Local video loaded successfully')}
+            onError={(e) => console.error('❌ Local video error:', e)}
           />
           <Box sx={{
             position: 'absolute',
