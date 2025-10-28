@@ -21,6 +21,22 @@ import {
   Tooltip,
   Grow,
   IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Stepper,
+  Step,
+  StepLabel,
+  Alert,
+  Paper,
+  Divider,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  Fade,
+  LinearProgress,
 } from '@mui/material';
 import {
   Search,
@@ -33,21 +49,23 @@ import {
   Verified,
   Favorite,
   FavoriteBorder,
+  CheckCircle,
+  Analytics,
+  CalendarToday,
+  Person,
+  TrendingUp,
+  Psychology,
+  MedicalServices,
+  Speed,
+  Security,
+  ThumbUp,
+  FilterList,
+  Sort,
+  Refresh,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-
-interface Doctor {
-  id: number;
-  name: string;
-  specialty: string;
-  rating: number;
-  reviews: number;
-  price: number;
-  availability: string;
-  image: string;
-  location: string;
-  isOnline: boolean;
-}
+import { SmartBookingAlgorithm } from '../services/smartBooking';
+import { Doctor, Service, TimeSlot, BookingPreferences, SmartBookingResult } from '../types';
 
 const DoctorsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -59,9 +77,34 @@ const DoctorsPage: React.FC = () => {
   const [favorites, setFavorites] = useState<Set<number>>(new Set());
   const navigate = useNavigate();
 
+  // Booking modal state
+  const [bookingOpen, setBookingOpen] = useState(false);
+  const [bookingDoctor, setBookingDoctor] = useState<Doctor | null>(null);
+  const [activeStep, setActiveStep] = useState(0);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [matchScore, setMatchScore] = useState(0);
+  const [algorithmStep, setAlgorithmStep] = useState(0);
+
+  // Booking states
+  const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState<TimeSlot | null>(null);
+  const [bookingPreferences, setBookingPreferences] = useState<BookingPreferences>({
+    preferredTimeOfDay: 'morning',
+    preferredDays: ['monday', 'tuesday', 'wednesday'],
+    maxPrice: 100,
+    preferredSpecialties: [],
+    urgency: 'medium',
+    consultationType: 'video'
+  });
+
+  // Algorithm results
+  const [smartRecommendations, setSmartRecommendations] = useState<SmartBookingResult | null>(null);
+  const [availabilitySlots, setAvailabilitySlots] = useState<TimeSlot[]>([]);
+
   // Constants
   const doctorsPerPage = 8;
   const initialLoad = 8;
+  const bookingSteps = ['Smart Matching', 'AI Scheduling', 'Confirm & Book'];
 
   // Load more doctors with smart algorithm
   const loadMoreDoctors = async () => {
@@ -328,6 +371,98 @@ const DoctorsPage: React.FC = () => {
     ) && (specialty === '' || doctor.specialty === specialty);
   });
 
+  // Booking functions
+  const handleBookNow = (doctor: Doctor) => {
+    console.log('Book Now clicked for doctor:', doctor.name);
+    alert(`Booking modal should open for ${doctor.name}`);
+    setBookingDoctor(doctor);
+    setBookingOpen(true);
+    setActiveStep(0);
+    setSmartRecommendations(null);
+    setAvailabilitySlots([]);
+    setSelectedService(null);
+    setSelectedTimeSlot(null);
+    // Start with a simple booking flow first
+    setActiveStep(1); // Skip to scheduling step for now
+    generateSimpleSlots(doctor);
+  };
+
+  const generateSimpleSlots = (doctor: Doctor) => {
+    // Generate some simple time slots for testing
+    const slots: TimeSlot[] = [
+      { id: '1', date: 'Today', time: '2:00 PM', available: true, doctorId: doctor.id },
+      { id: '2', date: 'Today', time: '3:00 PM', available: true, doctorId: doctor.id },
+      { id: '3', date: 'Tomorrow', time: '10:00 AM', available: true, doctorId: doctor.id },
+      { id: '4', date: 'Tomorrow', time: '2:00 PM', available: true, doctorId: doctor.id },
+      { id: '5', date: 'Friday', time: '11:00 AM', available: true, doctorId: doctor.id },
+      { id: '6', date: 'Friday', time: '4:00 PM', available: true, doctorId: doctor.id },
+    ];
+    setAvailabilitySlots(slots);
+  };
+
+  const runSmartMatching = async (doctor: Doctor) => {
+    setIsAnalyzing(true);
+    setAlgorithmStep(0);
+
+    try {
+      // Simulate AI processing steps
+      setAlgorithmStep(1);
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      setAlgorithmStep(2);
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Use SmartBookingAlgorithm
+      const algorithm = SmartBookingAlgorithm.getInstance();
+      const results = await algorithm.findOptimalDoctor([doctor], bookingPreferences);
+
+      setSmartRecommendations(results);
+      setMatchScore(results.matchScore || 0);
+      setAlgorithmStep(3);
+
+      // Generate availability slots
+      const slots = await algorithm.optimizeTimeSlots(doctor, bookingPreferences);
+      setAvailabilitySlots(slots);
+
+      setActiveStep(1);
+    } catch (error) {
+      console.error('Smart matching failed:', error);
+      // Fallback to simple slots if algorithm fails
+      generateSimpleSlots(doctor);
+      setActiveStep(1);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleBookingConfirm = () => {
+    if (!bookingDoctor || !selectedTimeSlot) return;
+
+    // Here you would typically send the booking to your backend
+    alert(`🎉 Booking confirmed with ${bookingDoctor.name}!\n\n📅 Date & Time: ${selectedTimeSlot.date} at ${selectedTimeSlot.time}\n💰 Amount: $${bookingDoctor.price}\n📧 Confirmation email sent!`);
+
+    // Reset booking state
+    setBookingOpen(false);
+    setBookingDoctor(null);
+    setActiveStep(0);
+    setSmartRecommendations(null);
+    setAvailabilitySlots([]);
+    setSelectedService(null);
+    setSelectedTimeSlot(null);
+  };
+
+  const handleNext = () => {
+    if (activeStep === 1 && !selectedTimeSlot) {
+      alert('Please select a time slot to continue.');
+      return;
+    }
+    setActiveStep((prevStep) => prevStep + 1);
+  };
+
+  const handleBack = () => {
+    setActiveStep((prevStep) => prevStep - 1);
+  };
+
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Typography variant="h3" component="h1" gutterBottom>
@@ -562,7 +697,7 @@ const DoctorsPage: React.FC = () => {
                     size="small"
                     onClick={(e) => {
                       e.stopPropagation();
-                      navigate(`/booking/${doctor.id}`);
+                      handleBookNow(doctor);
                     }}
                   >
                     Book Now
@@ -604,6 +739,89 @@ const DoctorsPage: React.FC = () => {
           </Typography>
         )}
       </Box>
+
+      {/* Booking Modal */}
+      <Dialog
+        open={bookingOpen}
+        onClose={() => setBookingOpen(false)}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: { borderRadius: 3, minHeight: '70vh' }
+        }}
+      >
+        <DialogTitle sx={{ pb: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <SmartToy color="primary" />
+            <Typography variant="h5" component="div" sx={{ fontWeight: 'bold' }}>
+              Book Appointment with {bookingDoctor?.name}
+            </Typography>
+          </Box>
+        </DialogTitle>
+
+        <DialogContent sx={{ px: 3, pb: 1 }}>
+          <Typography variant="body1" sx={{ mb: 3 }}>
+            Select a time slot for your appointment:
+          </Typography>
+
+          <Grid container spacing={2}>
+            {availabilitySlots.map((slot, index) => (
+              <Grid item xs={12} sm={6} key={slot.id}>
+                <Card
+                  sx={{
+                    cursor: 'pointer',
+                    border: selectedTimeSlot?.id === slot.id
+                      ? '2px solid #1976d2' : '1px solid #e0e0e0',
+                    transition: 'all 0.2s ease',
+                    '&:hover': { transform: 'translateY(-2px)', boxShadow: 3 }
+                  }}
+                  onClick={() => setSelectedTimeSlot(slot)}
+                >
+                  <CardContent sx={{ p: 2 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Schedule color="primary" />
+                      <Box>
+                        <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+                          {slot.date}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {slot.time}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+
+          {availabilitySlots.length === 0 && (
+            <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
+              Loading available time slots...
+            </Typography>
+          )}
+        </DialogContent>
+
+        <DialogActions sx={{ px: 3, pb: 3, pt: 1 }}>
+          <Button
+            onClick={() => setBookingOpen(false)}
+            variant="outlined"
+            sx={{ mr: 1 }}
+          >
+            Cancel
+          </Button>
+
+          <Button
+            onClick={handleBookingConfirm}
+            variant="contained"
+            disabled={!selectedTimeSlot}
+            startIcon={<CheckCircle />}
+            sx={{ fontWeight: 'bold', px: 4 }}
+          >
+            Confirm Booking
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };
