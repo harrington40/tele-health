@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  import React, { useState, useMemo } from 'react';
 import {
   Container,
   Typography,
@@ -433,19 +433,6 @@ const ServicesPage: React.FC = () => {
   ];
 
   const allServices = serviceCategories.flatMap(cat => cat.services);
-
-  // Popular services for carousel
-  const popularServices = useMemo(() => {
-    if (!allServices || allServices.length === 0) return [];
-    return [
-      allServices.find(s => s.id === 1), // General Check-up
-      allServices.find(s => s.id === 4), // Cardiology
-      allServices.find(s => s.id === 7), // Therapy Session
-      allServices.find(s => s.id === 10), // Annual Physical
-      allServices.find(s => s.id === 13), // Diabetes Management
-      allServices.find(s => s.id === 16), // Pediatric Consultation
-    ].filter(Boolean) as Service[];
-  }, [allServices]);
 
   const filteredServices = selectedCategory === 'all'
     ? allServices
