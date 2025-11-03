@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package doctor;
+
+service DoctorService {
+  rpc CreateDoctor (CreateDoctorRequest) returns (DoctorResponse);
+  rpc GetDoctor (GetDoctorRequest) returns (DoctorResponse);
+  rpc GetAllDoctors (GetAllDoctorsRequest) returns (GetAllDoctorsResponse);
+}
+
+message GetAllDoctorsRequest {}
+
+message GetAllDoctorsResponse {
+  repeated Doctor doctors = 1;
+}
+
+message Doctor {
+  string doctor_id = 1;
+  string name = 2;
+  string specialty = 3;
+  string profile_picture_url = 4;
+  double rating = 5;
+  int32 reviews = 6;
+  double price = 7;
+  string availability = 8;
+  string location = 9;
+  bool isOnline = 10;
+}
+
+message CreateDoctorRequest {
+  string name = 1;
+  string specialty = 2;
+  string profile_picture_url = 3;
+}
+
+message GetDoctorRequest {
+  string doctor_id = 1;
+}
+
+message DoctorResponse {
+  string doctor_id = 1;
+  string name = 2;
+  string specialty = 3;
+  string profile_picture_url = 4;
+  string message = 5;
+}

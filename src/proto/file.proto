@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package file;
+
+service FileService {
+  rpc UploadFile (UploadFileRequest) returns (FileResponse);
+  rpc GetFileUrl (GetFileUrlRequest) returns (FileResponse);
+}
+
+message UploadFileRequest {
+  string user_id = 1;
+  string file_name = 2;
+  bytes file_data = 3;
+  string mime_type = 4;
+}
+
+message GetFileUrlRequest {
+  string file_id = 1;
+}
+
+message FileResponse {
+  string file_id = 1;
+  string file_url = 2;
+  string message = 3;
+}

@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { Doctor, Appointment, Patient, Service } from '../types';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://207.180.247.153:8081/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -21,10 +21,10 @@ api.interceptors.request.use((config) => {
 
 // Doctor API
 export const doctorAPI = {
-  getAll: (): Promise<Doctor[]> => api.get('/doctors').then(res => res.data),
+  getAll: (): Promise<Doctor[]> => api.get('/doctors').then(res => res.data.doctors),
   getById: (id: number): Promise<Doctor> => api.get(`/doctors/${id}`).then(res => res.data),
   search: (query: string, specialty?: string): Promise<Doctor[]> => 
-    api.get('/doctors/search', { params: { query, specialty } }).then(res => res.data),
+    api.get('/doctors/search', { params: { query, specialty } }).then(res => res.data.doctors),
 };
 
 // Appointment API

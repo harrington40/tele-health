@@ -1,0 +1,60 @@
+{
+  "name": "telehealth-backend",
+  "version": "1.0.0",
+  "description": "Telehealth Backend Services with RethinkDB, MQTT, and gRPC",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "nodemon src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "start:services": "pm2 start ecosystem.config.js",
+    "stop:services": "pm2 stop ecosystem.config.js",
+    "restart:services": "pm2 restart ecosystem.config.js",
+    "logs": "pm2 logs",
+    "proto:generate": "npm run proto:auth && npm run proto:consultation",
+    "proto:auth": "grpc_tools_node_protoc --js_out=import_style=commonjs,binary:./src/proto --grpc_out=grpc_js:./src/proto --plugin=protoc-gen-grpc=./node_modules/.bin/grpc_tools_node_protoc_plugin ./protos/auth.proto",
+    "proto:patient": "grpc_tools_node_protoc --js_out=import_style=commonjs,binary:./src/proto --grpc_out=grpc_js:./src/proto --plugin=protoc-gen-grpc=./node_modules/.bin/grpc_tools_node_protoc_plugin ./protos/patient.proto",
+    "proto:consultation": "grpc_tools_node_protoc --js_out=import_style=commonjs,binary:./src/proto --grpc_out=grpc_js:./src/proto --plugin=protoc-gen-grpc=./node_modules/.bin/grpc_tools_node_protoc_plugin ./protos/consultation.proto"
+  },
+  "dependencies": {
+    "@grpc/grpc-js": "^1.9.7",
+    "@grpc/proto-loader": "^0.7.8",
+    "@types/cors": "^2.8.19",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "fastify": "^4.24.3",
+    "fastify-cors": "^6.1.0",
+    "fastify-jwt": "^4.2.0",
+    "joi": "^17.11.0",
+    "jsonwebtoken": "^9.0.2",
+    "mqtt": "^5.1.2",
+    "rethinkdb": "^2.4.2",
+    "uuid": "^9.0.1",
+    "winston": "^3.11.0"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.4",
+    "@types/express": "^4.17.17",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^20.8.6",
+    "@types/rethinkdb": "^2.3.21",
+    "@types/uuid": "^9.0.6",
+    "grpc-tools": "^1.12.4",
+    "nodemon": "^3.0.1",
+    "pm2": "^5.3.0",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.2.2"
+  },
+  "keywords": [
+    "telehealth",
+    "grpc",
+    "mqtt",
+    "rethinkdb",
+    "nodejs",
+    "typescript"
+  ],
+  "author": "TeleHealth Team",
+  "license": "MIT"
+}
