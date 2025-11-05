@@ -3,6 +3,7 @@ import { Routes, Route } from 'react-router-dom';
 import { Box } from '@mui/material';
 import Navbar from './components/Layout/Navbar';
 import Footer from './components/Layout/Footer';
+import ProtectedRoute from './components/ProtectedRoute';
 import HomePage from './pages/HomePage';
 import DoctorsPage from './pages/DoctorsPage';
 import DoctorProfilePage from './pages/DoctorProfilePage';
@@ -12,6 +13,10 @@ import HomeModern from './pages/HomeModern';
 import ConsultationPage from './pages/ConsultationPage';
 import DashboardPage from './pages/DashboardPage';
 import ProviderDashboard from './pages/ProviderDashboard';
+import DoctorDashboard from './pages/DoctorDashboard';
+import PatientDashboard from './pages/PatientDashboard';
+import AdminDashboard from './pages/AdminDashboard';
+import CredentialVerification from './pages/CredentialVerification';
 import AuthPage from './pages/AuthPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -45,6 +50,45 @@ const AppRoutes: React.FC = () => {
                 <Route path="/consultation/:id" element={<ConsultationPage />} />
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/provider-dashboard" element={<ProviderDashboard />} />
+                
+                {/* Protected patient dashboard */}
+                <Route 
+                  path="/patient-dashboard" 
+                  element={
+                    <ProtectedRoute requiresDoctor={false}>
+                      <PatientDashboard />
+                    </ProtectedRoute>
+                  } 
+                />
+                
+                {/* Admin dashboard - protected admin-only route */}
+                <Route 
+                  path="/admin-dashboard" 
+                  element={
+                    <ProtectedRoute requiresDoctor={false}>
+                      <AdminDashboard />
+                    </ProtectedRoute>
+                  } 
+                />
+                
+                {/* Protected doctor-only routes */}
+                <Route 
+                  path="/doctor-dashboard" 
+                  element={
+                    <ProtectedRoute requiresDoctor={true} requiresVerification={true}>
+                      <DoctorDashboard />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/doctor/verification" 
+                  element={
+                    <ProtectedRoute requiresDoctor={true}>
+                      <CredentialVerification />
+                    </ProtectedRoute>
+                  } 
+                />
+                
                 <Route path="/auth" element={<AuthPage />} />
                 <Route path="/faq" element={<FAQPage />} />
                 <Route path="/contact" element={<ContactUsPage />} />

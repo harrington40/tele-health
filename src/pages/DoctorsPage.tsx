@@ -17,6 +17,8 @@ import {
   Select,
   MenuItem,
   CircularProgress,
+  Alert,
+  Snackbar,
 } from '@mui/material';
 import {
   Search,
@@ -26,11 +28,18 @@ import {
   AccessTime,
   Favorite,
   FavoriteBorder,
+  Close,
+  CalendarToday,
+  VideoCall,
+  CheckCircle,
 } from '@mui/icons-material';
 import { Doctor } from '../types';
 import { useDoctors } from '../hooks/useDoctors';
+import bookingService from '../services/bookingService';
+import { useNavigate } from 'react-router-dom';
 
 const DoctorsPage: React.FC = () => {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [specialty, setSpecialty] = useState('');
   const [sortBy, setSortBy] = useState('smart');
@@ -38,6 +47,17 @@ const DoctorsPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [favorites, setFavorites] = useState<Set<number>>(new Set());
+  
+  // Booking modal state
+  const [bookingModalOpen, setBookingModalOpen] = useState(false);
+  const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
+  const [bookingDate, setBookingDate] = useState('');
+  const [bookingTime, setBookingTime] = useState('');
+  const [appointmentType, setAppointmentType] = useState<'video' | 'in-person'>('video');
+  
+  // Success notification state
+  const [showSuccessAlert, setShowSuccessAlert] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
 
   // Fetch doctors from backend
   const { doctors, loading, error } = useDoctors();
@@ -144,7 +164,49 @@ const DoctorsPage: React.FC = () => {
 
   // Booking function
   const handleBookNow = (doctor: Doctor) => {
-    alert(`Booking modal should open for ${doctor.name}`);
+    setSelectedDoctor(doctor);
+    setBookingModalOpen(true);
+  };
+
+  const handleCloseBooking = () => {
+    setBookingModalOpen(false);
+    setSelectedDoctor(null);
+    setBookingDate('');
+    setBookingTime('');
+    setAppointmentType('video');
+  };
+
+  const handleConfirmBooking = () => {
+    if (selectedDoctor && bookingDate && bookingTime) {
+      // Calculate final price based on appointment type
+      const finalPrice = bookingService.calculatePrice(selectedDoctor.price, appointmentType);
+      
+      // Save booking to localStorage
+      const newBooking = bookingService.addBooking({
+        doctorId: selectedDoctor.id.toString(),
+        doctorName: selectedDoctor.name,
+        specialty: selectedDoctor.specialty,
+        date: bookingDate,
+        time: bookingTime,
+        type: appointmentType,
+        price: finalPrice,
+        status: 'upcoming',
+      });
+      
+      // Show success message
+      setSuccessMessage(`Booking confirmed with ${selectedDoctor.name}! Check your dashboard for details.`);
+      setShowSuccessAlert(true);
+      
+      // Close modal and reset form
+      handleCloseBooking();
+      
+      // Optional: Navigate to dashboard after a delay
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 2000);
+    } else {
+      alert('Please select both date and time');
+    }
   };
 
   return (
@@ -336,8 +398,11 @@ const DoctorsPage: React.FC = () => {
                 </Box>
 
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                  <AccessTime sx={{ fontSize: 16, mr: 0.5, color: 'text.secondary' }} />
                   <Typography variant="body2" color="text.secondary">
-                    {doctor.availability}
+                    {typeof doctor.availability === 'string' 
+                      ? doctor.availability 
+                      : (doctor.availability as any)?.status || 'Available'}
                   </Typography>
                   {doctor.isOnline && (
                     <Chip
@@ -350,9 +415,9 @@ const DoctorsPage: React.FC = () => {
                   )}
                 </Box>
 
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <Typography variant="h6" color="primary" sx={{ fontWeight: 700 }}>
-                    ${doctor.price}
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 2 }}>
+                  <Typography variant="h5" color="primary" sx={{ fontWeight: 700 }}>
+                    ${doctor.price || '0'}
                   </Typography>
                   <Button
                     variant="contained"
@@ -365,7 +430,8 @@ const DoctorsPage: React.FC = () => {
                       borderRadius: 2,
                       textTransform: 'none',
                       fontWeight: 600,
-                      px: 2,
+                      px: 3,
+                      py: 1,
                     }}
                   >
                     Book Now
@@ -397,6 +463,204 @@ const DoctorsPage: React.FC = () => {
           </Button>
         </Box>
       )}
+
+      {/* Booking Modal */}
+      <Box
+        sx={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          bgcolor: 'rgba(0, 0, 0, 0.5)',
+          display: bookingModalOpen ? 'flex' : 'none',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1300,
+        }}
+        onClick={handleCloseBooking}
+      >
+        <Box
+          sx={{
+            bgcolor: 'white',
+            borderRadius: 3,
+            p: 4,
+            maxWidth: 600,
+            width: '90%',
+            maxHeight: '90vh',
+            overflow: 'auto',
+            position: 'relative',
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Close Button */}
+          <Button
+            onClick={handleCloseBooking}
+            sx={{
+              position: 'absolute',
+              top: 16,
+              right: 16,
+              minWidth: 'auto',
+              p: 1,
+            }}
+          >
+            <Close />
+          </Button>
+
+          {/* Modal Content */}
+          {selectedDoctor && (
+            <>
+              <Typography variant="h5" fontWeight="bold" mb={1}>
+                Book Appointment
+              </Typography>
+              
+              <Box sx={{ mb: 3, pb: 3, borderBottom: '1px solid #eee' }}>
+                <Typography variant="h6" color="primary" gutterBottom>
+                  {selectedDoctor.name}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <LocationOn fontSize="small" />
+                  {selectedDoctor.specialty} • {selectedDoctor.location}
+                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
+                  <Star sx={{ color: '#ffc107', fontSize: 20 }} />
+                  <Typography variant="body2">
+                    {selectedDoctor.rating} ({selectedDoctor.reviews} reviews)
+                  </Typography>
+                </Box>
+              </Box>
+
+              {/* Appointment Type */}
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="subtitle1" fontWeight="600" mb={2}>
+                  Appointment Type
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 2 }}>
+                  <Button
+                    variant={appointmentType === 'video' ? 'contained' : 'outlined'}
+                    onClick={() => setAppointmentType('video')}
+                    startIcon={<VideoCall />}
+                    sx={{ flex: 1, borderRadius: 2, textTransform: 'none' }}
+                  >
+                    Video Call
+                  </Button>
+                  <Button
+                    variant={appointmentType === 'in-person' ? 'contained' : 'outlined'}
+                    onClick={() => setAppointmentType('in-person')}
+                    startIcon={<CalendarToday />}
+                    sx={{ flex: 1, borderRadius: 2, textTransform: 'none' }}
+                  >
+                    In-Person
+                  </Button>
+                </Box>
+              </Box>
+
+              {/* Date Selection */}
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="subtitle1" fontWeight="600" mb={1}>
+                  Select Date
+                </Typography>
+                <TextField
+                  type="date"
+                  fullWidth
+                  value={bookingDate}
+                  onChange={(e) => setBookingDate(e.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                  inputProps={{ min: new Date().toISOString().split('T')[0] }}
+                  sx={{ borderRadius: 2 }}
+                />
+              </Box>
+
+              {/* Time Selection */}
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="subtitle1" fontWeight="600" mb={1}>
+                  Select Time
+                </Typography>
+                <FormControl fullWidth>
+                  <Select
+                    value={bookingTime}
+                    onChange={(e) => setBookingTime(e.target.value)}
+                    displayEmpty
+                  >
+                    <MenuItem value="" disabled>Select a time</MenuItem>
+                    <MenuItem value="09:00">9:00 AM</MenuItem>
+                    <MenuItem value="10:00">10:00 AM</MenuItem>
+                    <MenuItem value="11:00">11:00 AM</MenuItem>
+                    <MenuItem value="12:00">12:00 PM</MenuItem>
+                    <MenuItem value="13:00">1:00 PM</MenuItem>
+                    <MenuItem value="14:00">2:00 PM</MenuItem>
+                    <MenuItem value="15:00">3:00 PM</MenuItem>
+                    <MenuItem value="16:00">4:00 PM</MenuItem>
+                    <MenuItem value="17:00">5:00 PM</MenuItem>
+                  </Select>
+                </FormControl>
+              </Box>
+
+              {/* Price Summary */}
+              <Box sx={{ bgcolor: '#f5f5f5', p: 2, borderRadius: 2, mb: 3 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                  <Typography variant="body2">Base Consultation Fee</Typography>
+                  <Typography variant="body2">${selectedDoctor.price}</Typography>
+                </Box>
+                {appointmentType === 'in-person' && (
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      In-Person Visit Surcharge (20%)
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      +${Math.round(selectedDoctor.price * 0.2)}
+                    </Typography>
+                  </Box>
+                )}
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', pt: 1, borderTop: '1px solid #ddd' }}>
+                  <Typography variant="subtitle1" fontWeight="bold">Total</Typography>
+                  <Typography variant="subtitle1" fontWeight="bold" color="primary">
+                    ${bookingService.calculatePrice(selectedDoctor.price, appointmentType)}
+                  </Typography>
+                </Box>
+              </Box>
+
+              {/* Action Buttons */}
+              <Box sx={{ display: 'flex', gap: 2 }}>
+                <Button
+                  variant="outlined"
+                  fullWidth
+                  onClick={handleCloseBooking}
+                  sx={{ borderRadius: 2, textTransform: 'none', py: 1.5 }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="contained"
+                  fullWidth
+                  onClick={handleConfirmBooking}
+                  disabled={!bookingDate || !bookingTime}
+                  sx={{ borderRadius: 2, textTransform: 'none', py: 1.5 }}
+                >
+                  Confirm Booking
+                </Button>
+              </Box>
+            </>
+          )}
+        </Box>
+      </Box>
+
+      {/* Success Notification */}
+      <Snackbar
+        open={showSuccessAlert}
+        autoHideDuration={6000}
+        onClose={() => setShowSuccessAlert(false)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setShowSuccessAlert(false)}
+          severity="success"
+          icon={<CheckCircle />}
+          sx={{ width: '100%' }}
+        >
+          {successMessage}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 };

@@ -198,7 +198,7 @@ export const usePatientDashboard = () => {
   useEffect(() => {
     const interval = setInterval(() => {
       if (state.data?.patient) {
-        loadDashboardData(state.data.patient.id);
+        loadDashboardData(parseInt(state.data.patient.id));
       }
     }, 5 * 60 * 1000);
 
@@ -302,12 +302,20 @@ async function fetchPatientDashboardData(patientId: number): Promise<PatientDash
     ],
     notifications: [],
     patient: {
-      id: patientId,
+      id: patientId.toString(),
+      userId: patientId.toString(),
       name: "Sarah Johnson",
       email: "sarah.johnson@email.com",
       phone: "+1 (555) 123-4567",
       dateOfBirth: "1985-03-15",
-      address: "123 Health St, Wellness City, WC 12345",
+      gender: "Female",
+      address: {
+        street: "123 Health St",
+        city: "Wellness City",
+        state: "WC",
+        zipCode: "12345",
+        country: "USA"
+      },
       emergencyContact: {
         name: "John Johnson",
         phone: "+1 (555) 987-6543",
@@ -315,7 +323,47 @@ async function fetchPatientDashboardData(patientId: number): Promise<PatientDash
       },
       medicalHistory: ["Hypertension", "Type 2 Diabetes"],
       allergies: ["Penicillin", "Peanuts"],
-      medications: ["Metformin", "Lisinopril"]
+      medications: [
+        {
+          name: "Metformin",
+          dosage: "500mg",
+          frequency: "Twice daily",
+          prescribedBy: "Dr. Smith",
+          startDate: "2025-09-15",
+          nextDose: "2025-10-06T08:00:00Z",
+          remaining: 60
+        },
+        {
+          name: "Lisinopril",
+          dosage: "10mg",
+          frequency: "Once daily",
+          prescribedBy: "Dr. Smith",
+          startDate: "2025-09-15",
+          nextDose: "2025-10-06T08:00:00Z",
+          remaining: 90
+        }
+      ],
+      healthMetrics: {
+        bloodPressure: "128/82",
+        heartRate: 72,
+        weight: 165,
+        height: 65,
+        bmi: 27.5,
+        temperature: 98.6,
+        lastUpdated: "2025-10-05T10:00:00Z"
+      },
+      healthScore: 85,
+      insuranceInfo: {
+        provider: "Blue Cross",
+        policyNumber: "BC123456",
+        groupNumber: "GRP789"
+      },
+      bloodType: "O+",
+      chronicConditions: ["Hypertension", "Type 2 Diabetes"],
+      appointmentHistory: [],
+      isActive: true,
+      createdAt: "2024-01-15T00:00:00Z",
+      updatedAt: "2025-10-05T10:00:00Z"
     },
     healthMetrics: [
       {

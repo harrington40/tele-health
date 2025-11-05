@@ -1,0 +1,126 @@
+syntax = "proto3";
+
+package patient;
+
+service PatientService {
+  rpc CreatePatient (CreatePatientRequest) returns (PatientResponse);
+  rpc GetPatient (GetPatientRequest) returns (PatientResponse);
+  rpc GetAllPatients (GetAllPatientsRequest) returns (PatientsListResponse);
+  rpc UpdatePatient (UpdatePatientRequest) returns (PatientResponse);
+  rpc DeletePatient (DeletePatientRequest) returns (DeleteResponse);
+}
+
+message Address {
+  string street = 1;
+  string city = 2;
+  string state = 3;
+  string zip_code = 4;
+  string country = 5;
+}
+
+message EmergencyContact {
+  string name = 1;
+  string phone = 2;
+  string relationship = 3;
+}
+
+message Medication {
+  string name = 1;
+  string dosage = 2;
+  string frequency = 3;
+  string prescribed_by = 4;
+  string start_date = 5;
+  string next_dose = 6;
+  int32 remaining = 7;
+}
+
+message HealthMetrics {
+  int32 heart_rate = 1;
+  string blood_pressure = 2;
+  double temperature = 3;
+  int32 weight = 4;
+  int32 height = 5;
+  double bmi = 6;
+  string last_updated = 7;
+}
+
+message InsuranceInfo {
+  string provider = 1;
+  string policy_number = 2;
+  string group_number = 3;
+}
+
+message AppointmentHistory {
+  string id = 1;
+  string doctor = 2;
+  string specialty = 3;
+  string date = 4;
+  string diagnosis = 5;
+  string notes = 6;
+  string follow_up = 7;
+  string notification = 8;
+}
+
+message PatientData {
+  string patient_id = 1;
+  string user_id = 2;
+  string name = 3;
+  string email = 4;
+  string phone = 5;
+  string date_of_birth = 6;
+  string gender = 7;
+  Address address = 8;
+  EmergencyContact emergency_contact = 9;
+  repeated string medical_history = 10;
+  repeated string allergies = 11;
+  repeated Medication medications = 12;
+  HealthMetrics health_metrics = 13;
+  int32 health_score = 14;
+  InsuranceInfo insurance_info = 15;
+  string blood_type = 16;
+  repeated string chronic_conditions = 17;
+  repeated AppointmentHistory appointment_history = 18;
+  bool is_active = 19;
+  string created_at = 20;
+  string updated_at = 21;
+}
+
+message CreatePatientRequest {
+  string name = 1;
+  string email = 2;
+  string phone = 3;
+  string date_of_birth = 4;
+  string gender = 5;
+  Address address = 6;
+}
+
+message GetPatientRequest {
+  string patient_id = 1;
+}
+
+message GetAllPatientsRequest {
+  // Empty - get all patients
+}
+
+message UpdatePatientRequest {
+  string patient_id = 1;
+  PatientData patient_data = 2;
+}
+
+message DeletePatientRequest {
+  string patient_id = 1;
+}
+
+message PatientResponse {
+  PatientData patient = 1;
+  string message = 2;
+}
+
+message PatientsListResponse {
+  repeated PatientData patients = 1;
+}
+
+message DeleteResponse {
+  bool success = 1;
+  string message = 2;
+}

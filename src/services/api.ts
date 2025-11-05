@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { Doctor, Appointment, Patient, Service } from '../types';
 
+// API runs on port 8081, frontend on port 3000
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://207.180.247.153:8081/api';
 
 const api = axios.create({
@@ -64,6 +65,22 @@ export const authAPI = {
     api.post('/auth/register', userData).then(res => res.data),
   logout: (): Promise<void> => 
     api.post('/auth/logout').then(res => res.data),
+};
+
+// Doctor Dashboard API
+export const doctorDashboardAPI = {
+  getDashboard: (doctorId: string): Promise<any> => 
+    api.get(`/doctor/dashboard/${doctorId}`).then(res => res.data),
+  getPatients: (doctorId: string): Promise<any[]> => 
+    api.get(`/doctor/${doctorId}/patients`).then(res => res.data.patients),
+  getAppointments: (doctorId: string): Promise<any[]> => 
+    api.get(`/doctor/${doctorId}/appointments`).then(res => res.data.appointments),
+  getDocuments: (doctorId: string): Promise<any[]> => 
+    api.get(`/doctor/${doctorId}/documents`).then(res => res.data.documents),
+  uploadDocument: (doctorId: string, data: { name: string; type: string; patientId: string }): Promise<any> => 
+    api.post(`/doctor/${doctorId}/documents/upload`, data).then(res => res.data),
+  shareDocument: (doctorId: string, documentId: string, data: { patientId: string; permissions: string[] }): Promise<any> => 
+    api.post(`/doctor/${doctorId}/documents/${documentId}/share`, data).then(res => res.data),
 };
 
 export default api;

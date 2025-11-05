@@ -179,5 +179,4 @@ app.listen(HTTP_PORT, () => {
   console.log(`gRPC-web proxy server running on port ${HTTP_PORT}`);
 });
 
-console.log('TeleHealth gRPC services starting...');</content>
-<parameter name="filePath">/mnt/c/Users/harri/designProject2020/tele-health/backend/main-server.js
+console.log('TeleHealth gRPC services starting...');

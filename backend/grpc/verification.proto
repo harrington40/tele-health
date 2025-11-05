@@ -1,0 +1,73 @@
+syntax = "proto3";
+
+package verification;
+
+service VerificationService {
+  rpc SubmitCredentials (CredentialRequest) returns (CredentialResponse);
+  rpc VerifyCredentials (VerifyRequest) returns (VerifyResponse);
+  rpc GetVerificationStatus (StatusRequest) returns (StatusResponse);
+  rpc UpdateVerificationStatus (UpdateStatusRequest) returns (UpdateStatusResponse);
+}
+
+message CredentialRequest {
+  string doctor_id = 1;
+  string medical_license_number = 2;
+  string issuing_state = 3;
+  string issuing_country = 4;
+  repeated string specialization_certificates = 5;
+  repeated string board_certifications = 6;
+  string medical_school = 7;
+  string graduation_year = 8;
+  string npi_number = 9; // National Provider Identifier
+  string dea_number = 10; // Drug Enforcement Administration number
+  repeated string professional_references = 11;
+  string cv_document_url = 12;
+  string license_document_url = 13;
+  repeated string certificate_urls = 14;
+}
+
+message CredentialResponse {
+  string verification_id = 1;
+  string doctor_id = 2;
+  string status = 3; // pending, approved, rejected, needs_review
+  string message = 4;
+  string submitted_at = 5;
+}
+
+message VerifyRequest {
+  string verification_id = 1;
+  string admin_id = 2;
+  string status = 3; // approved, rejected
+  string notes = 4;
+}
+
+message VerifyResponse {
+  bool success = 1;
+  string message = 2;
+  string verified_at = 3;
+}
+
+message StatusRequest {
+  string doctor_id = 1;
+}
+
+message StatusResponse {
+  string verification_id = 1;
+  string status = 2;
+  string submitted_at = 3;
+  string verified_at = 4;
+  string admin_notes = 5;
+  repeated string missing_documents = 6;
+}
+
+message UpdateStatusRequest {
+  string verification_id = 1;
+  string status = 2;
+  string admin_id = 3;
+  string notes = 4;
+}
+
+message UpdateStatusResponse {
+  bool success = 1;
+  string message = 2;
+}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Container,
   Typography,
@@ -41,6 +41,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import VideoConsultation from '../components/VideoConsultation';
 import { VideoSession } from '../types';
+import bookingService, { Booking } from '../services/bookingService';
 
 interface HealthMetric {
   id: string;
@@ -87,6 +88,13 @@ const DashboardPage: React.FC = () => {
   const [healthScore] = useState(85);
   const [showVideoDialog, setShowVideoDialog] = useState(false);
   const [activeVideoSession, setActiveVideoSession] = useState<VideoSession | null>(null);
+  const [userBookings, setUserBookings] = useState<Booking[]>([]);
+
+  // Load bookings from localStorage when component mounts
+  useEffect(() => {
+    const bookings = bookingService.getUpcomingBookings();
+    setUserBookings(bookings);
+  }, []);
 
   // Mock data - in real app, this would come from API
   const healthMetrics: HealthMetric[] = [
@@ -420,6 +428,80 @@ const DashboardPage: React.FC = () => {
                 </Button>
               </Box>
               <List>
+                {/* Show user bookings first */}
+                {userBookings.map((booking, index) => (
+                  <React.Fragment key={booking.id}>
+                    <ListItem sx={{ px: 0 }}>
+                      <ListItemIcon>
+                        <Avatar sx={{ bgcolor: 'success.main' }}>
+                          {booking.type === 'video' ? <VideoCall /> : <Person />}
+                        </Avatar>
+                      </ListItemIcon>
+                      <ListItemText
+                        primary={
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+                              {booking.doctorName}
+                            </Typography>
+                            <Chip label={booking.specialty} size="small" variant="outlined" />
+                            <Chip 
+                              label="New" 
+                              size="small" 
+                              color="success" 
+                              sx={{ fontWeight: 'bold' }}
+                            />
+                          </Box>
+                        }
+                        secondary={
+                          <Box>
+                            <Typography variant="body2" color="text.secondary">
+                              {new Date(booking.date).toLocaleDateString()} at {booking.time}
+                            </Typography>
+                            <Typography variant="body2" color="primary" sx={{ fontWeight: 'bold', mt: 0.5 }}>
+                              ${booking.price} - {booking.type === 'video' ? 'Video Consultation' : 'In-Person Visit'}
+                            </Typography>
+                            <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                              <Button
+                                size="small"
+                                variant="contained"
+                                color="primary"
+                                onClick={() => {
+                                  handleJoinCall({ 
+                                    id: booking.id, 
+                                    doctor: booking.doctorName,
+                                    specialty: booking.specialty,
+                                    date: booking.date,
+                                    time: booking.time,
+                                    type: booking.type,
+                                    status: 'upcoming'
+                                  });
+                                }}
+                              >
+                                {booking.type === 'video' ? 'Join Video Call' : 'View Details'}
+                              </Button>
+                              <Button 
+                                size="small" 
+                                variant="outlined"
+                                color="error"
+                                onClick={() => {
+                                  if (window.confirm('Are you sure you want to cancel this booking?')) {
+                                    bookingService.cancelBooking(booking.id);
+                                    setUserBookings(bookingService.getUpcomingBookings());
+                                  }
+                                }}
+                              >
+                                Cancel
+                              </Button>
+                            </Box>
+                          </Box>
+                        }
+                      />
+                    </ListItem>
+                    {(index < userBookings.length - 1 || upcomingAppointments.length > 0) && <Divider />}
+                  </React.Fragment>
+                ))}
+                
+                {/* Show existing mock appointments */}
                 {upcomingAppointments.map((appointment, index) => (
                   <React.Fragment key={appointment.id}>
                     <ListItem sx={{ px: 0 }}>

@@ -1,0 +1,108 @@
+syntax = "proto3";
+
+package documents;
+
+service DocumentService {
+  rpc UploadDocument (UploadRequest) returns (UploadResponse);
+  rpc ShareDocument (ShareRequest) returns (ShareResponse);
+  rpc GetSharedDocuments (GetDocumentsRequest) returns (GetDocumentsResponse);
+  rpc ApproveDocumentAccess (ApproveRequest) returns (ApproveResponse);
+  rpc DownloadDocument (DownloadRequest) returns (DownloadResponse);
+  rpc RevokeAccess (RevokeRequest) returns (RevokeResponse);
+}
+
+message UploadRequest {
+  string uploader_id = 1;
+  string uploader_type = 2; // doctor, patient, admin
+  string document_name = 3;
+  string document_type = 4; // prescription, lab_result, medical_record, imaging, consent_form
+  string file_url = 5;
+  string file_size = 6;
+  string mime_type = 7;
+  string patient_id = 8;
+  string description = 9;
+}
+
+message UploadResponse {
+  string document_id = 1;
+  string message = 2;
+  string uploaded_at = 3;
+}
+
+message ShareRequest {
+  string document_id = 1;
+  string shared_by_id = 2;
+  string shared_by_type = 3; // doctor, patient
+  string shared_with_id = 4;
+  string shared_with_type = 5; // doctor, patient
+  string permission = 6; // view, download, edit
+  string expiration_date = 7;
+  string notes = 8;
+}
+
+message ShareResponse {
+  string share_id = 1;
+  string message = 2;
+  string status = 3; // pending_approval, approved, rejected
+}
+
+message GetDocumentsRequest {
+  string user_id = 1;
+  string user_type = 2; // doctor, patient
+  string filter_status = 3; // all, pending, approved, rejected
+}
+
+message Document {
+  string document_id = 1;
+  string document_name = 2;
+  string document_type = 3;
+  string file_url = 4;
+  string uploaded_by = 5;
+  string uploaded_at = 6;
+  string shared_with = 7;
+  string permission = 8;
+  string status = 9;
+  string patient_name = 10;
+  string description = 11;
+  bool can_download = 12;
+}
+
+message GetDocumentsResponse {
+  repeated Document documents = 1;
+}
+
+message ApproveRequest {
+  string share_id = 1;
+  string approver_id = 2;
+  bool approved = 3;
+  string notes = 4;
+}
+
+message ApproveResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message DownloadRequest {
+  string document_id = 1;
+  string user_id = 2;
+  string user_type = 3;
+}
+
+message DownloadResponse {
+  string file_url = 1;
+  string file_name = 2;
+  string mime_type = 3;
+  bool success = 4;
+  string message = 5;
+}
+
+message RevokeRequest {
+  string share_id = 1;
+  string revoked_by_id = 2;
+}
+
+message RevokeResponse {
+  bool success = 1;
+  string message = 2;
+}

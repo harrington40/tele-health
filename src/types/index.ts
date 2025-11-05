@@ -28,21 +28,79 @@ export interface Appointment {
   reason?: string;
 }
 
+export interface Address {
+  street: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  country: string;
+}
+
+export interface EmergencyContact {
+  name: string;
+  phone: string;
+  relationship: string;
+}
+
+export interface Medication {
+  name: string;
+  dosage: string;
+  frequency: string;
+  prescribedBy: string;
+  startDate: string;
+  nextDose: string;
+  remaining: number;
+}
+
+export interface HealthMetrics {
+  heartRate: number;
+  bloodPressure: string;
+  temperature: number;
+  weight: number;
+  height: number;
+  bmi: number;
+  lastUpdated: string;
+}
+
+export interface InsuranceInfo {
+  provider: string;
+  policyNumber: string;
+  groupNumber: string;
+}
+
+export interface AppointmentHistoryItem {
+  id: string;
+  doctor: string;
+  specialty: string;
+  date: string;
+  diagnosis: string;
+  notes: string;
+  followUp: string;
+  notification?: string;
+}
+
 export interface Patient {
-  id: number;
+  id: string;
+  userId: string;
   name: string;
   email: string;
   phone: string;
   dateOfBirth: string;
-  address: string;
-  emergencyContact: {
-    name: string;
-    phone: string;
-    relationship: string;
-  };
-  medicalHistory?: string[];
-  allergies?: string[];
-  medications?: string[];
+  gender: string;
+  address: Address;
+  emergencyContact: EmergencyContact;
+  medicalHistory: string[];
+  allergies: string[];
+  medications: Medication[];
+  healthMetrics: HealthMetrics;
+  healthScore: number;
+  insuranceInfo: InsuranceInfo;
+  bloodType: string;
+  chronicConditions: string[];
+  appointmentHistory: AppointmentHistoryItem[];
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Service {

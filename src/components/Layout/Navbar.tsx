@@ -20,6 +20,22 @@ const Navbar: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
+  // Check if user is a doctor
+  const getUserRole = () => {
+    try {
+      const userStr = localStorage.getItem('user_data');
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        return user.role;
+      }
+    } catch (error) {
+      return null;
+    }
+    return null;
+  };
+
+  const isDoctor = getUserRole() === 'doctor';
+
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
   };
@@ -34,6 +50,7 @@ const Navbar: React.FC = () => {
     { label: 'Services', path: '/services' },
     { label: 'FAQ', path: '/faq' },
     { label: 'Book Appointment', path: '/booking' },
+    ...(isDoctor ? [{ label: 'Doctor Dashboard', path: '/doctor-dashboard' }] : []),
     { label: 'Contact Us', path: '/contact' },
     { label: 'Privacy Policy', path: '/privacy' },
     { label: 'Terms of Service', path: '/terms' },

@@ -22,6 +22,22 @@ import { useNavigate } from 'react-router-dom';
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
 
+  // Check if user is a doctor
+  const getUserRole = () => {
+    try {
+      const userStr = localStorage.getItem('user_data');
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        return user.role;
+      }
+    } catch (error) {
+      return null;
+    }
+    return null;
+  };
+
+  const isDoctor = getUserRole() === 'doctor';
+
   const features = [
     {
       icon: <VideoCall sx={{ fontSize: 40, color: 'primary.main' }} />,
@@ -103,6 +119,32 @@ const HomePage: React.FC = () => {
             >
               FIND A DOCTOR NOW
             </Button>
+            {isDoctor && (
+              <Button
+                variant="outlined"
+                size="large"
+                onClick={() => navigate('/doctor-dashboard')}
+                sx={{
+                  borderColor: 'white',
+                  color: 'white',
+                  fontWeight: 'bold',
+                  fontSize: 18,
+                  px: 4,
+                  py: 2.5,
+                  borderRadius: 99,
+                  borderWidth: 2,
+                  textTransform: 'none',
+                  '&:hover': {
+                    borderColor: '#FFD600',
+                    color: '#FFD600',
+                    borderWidth: 2,
+                    boxShadow: 4,
+                  },
+                }}
+              >
+                Doctor Portal 🩺
+              </Button>
+            )}
           </Box>
           <Typography variant="body1" sx={{ opacity: 0.85, fontSize: 18 }}>
             Or <Button color="inherit" onClick={() => navigate('/doctors')} sx={{ textDecoration: 'underline', color: 'white', fontWeight: 500 }}>browse all doctors</Button>

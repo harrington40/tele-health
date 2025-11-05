@@ -33,6 +33,7 @@ import {
 } from '@mui/icons-material';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { authService } from '../services/smartAuth';
 
 interface LoginPageProps {
   onLogin?: (email: string, password: string, rememberMe: boolean) => Promise<void>;
@@ -145,26 +146,30 @@ const LoginPage: React.FC<LoginPageProps> = ({
     setError('');
 
     try {
-      if (onLogin) {
-        await onLogin(formData.email, formData.password, formData.rememberMe);
-      } else {
-        // Mock login for demo
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        if (formData.email && formData.password) {
-          // Simple provider detection based on email domain
-          const isProvider = formData.email.includes('doctor') ||
-                           formData.email.includes('hospital') ||
-                           formData.email.includes('clinic') ||
-                           formData.email.includes('med') ||
-                           formData.email.includes('healthcare');
-
-          navigate(isProvider ? '/provider-dashboard' : '/dashboard');
-        } else {
-          throw new Error('Please fill in all fields');
-        }
-      }
+      // Use smart authentication service
+      const { user, route } = await authService.login(formData.email, formData.password);
+      
+      // Show success message with personalized greeting
+      const timeGreeting = new Date().getHours() < 12 ? 'Good morning' : 
+                          new Date().getHours() < 18 ? 'Good afternoon' : 'Good evening';
+      
+      // Add smart suggestions based on user type
+      const userTypeMessage = user.user_type === 'doctor' 
+        ? '👨‍⚕️ Redirecting to your Doctor Dashboard...' 
+        : user.user_type === 'patient'
+        ? '🏥 Redirecting to your Patient Dashboard...'
+        : '⚙️ Redirecting to Admin Dashboard...';
+      
+      console.log(`🧠 Smart Login: ${timeGreeting}, ${user.first_name}! ${userTypeMessage}`);
+      console.log('📍 Route determined:', route);
+      
+      // Navigate to smart-determined route
+      setTimeout(() => {
+        navigate(route, { replace: true });
+      }, 800);
+      
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      setError(err instanceof Error ? err.message : 'Login failed. Please check your credentials.');
       setLoginAttempts(prev => prev + 1);
     } finally {
       setIsLoading(false);
