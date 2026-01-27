@@ -1,12 +1,20 @@
 import { Doctor, TimeSlot, BookingPreferences, SmartBookingResult, Service } from '../types';
 
 export class SmartBookingAlgorithm {
+  private static instance: SmartBookingAlgorithm;
   private doctors: Doctor[];
   private timeSlots: TimeSlot[];
 
-  constructor(doctors: Doctor[], timeSlots: TimeSlot[]) {
-    this.doctors = doctors;
-    this.timeSlots = timeSlots;
+  constructor(doctors?: Doctor[], timeSlots?: TimeSlot[]) {
+    this.doctors = doctors || [];
+    this.timeSlots = timeSlots || [];
+  }
+
+  public static getInstance(): SmartBookingAlgorithm {
+    if (!SmartBookingAlgorithm.instance) {
+      SmartBookingAlgorithm.instance = new SmartBookingAlgorithm();
+    }
+    return SmartBookingAlgorithm.instance;
   }
 
   /**
@@ -152,6 +160,177 @@ export class SmartBookingAlgorithm {
     }
     // Early morning or late evening
     return 0.95;
+  }
+
+  /**
+   * AI-powered doctor matching algorithm
+   */
+  async findOptimalDoctor(
+    doctors: Doctor[],
+    preferences: BookingPreferences,
+    patientHistory?: any
+  ): Promise<SmartBookingResult> {
+    console.log('🤖 Running AI doctor matching algorithm...');
+
+    // Simulate AI processing time
+    await this.simulateProcessingDelay(2000);
+
+    // Calculate match scores for each doctor
+    const scoredDoctors = doctors.map(doctor => ({
+      doctor,
+      score: this.calculateDoctorScore(doctor, preferences, patientHistory),
+      reasoning: this.generateMatchReasoning(doctor, preferences)
+    }));
+
+    // Sort by score (highest first)
+    scoredDoctors.sort((a, b) => b.score - a.score);
+
+    const bestMatch = scoredDoctors[0];
+    const alternatives = scoredDoctors.slice(1, 3).map(item => item.doctor);
+
+    return {
+      recommendedDoctor: bestMatch.doctor,
+      matchScore: Math.round(bestMatch.score),
+      reasoning: bestMatch.reasoning,
+      alternativeOptions: alternatives,
+      estimatedWaitTime: this.calculateWaitTime(bestMatch.doctor),
+      confidenceLevel: this.getConfidenceLevel(bestMatch.score)
+    };
+  }
+
+  /**
+   * Intelligent time slot optimization
+   */
+  async optimizeTimeSlots(
+    doctor: Doctor,
+    preferences: BookingPreferences,
+    existingBookings: TimeSlot[] = []
+  ): Promise<TimeSlot[]> {
+    console.log('📅 Optimizing time slots with AI...');
+
+    await this.simulateProcessingDelay(1500);
+
+    const optimizedSlots: TimeSlot[] = [];
+    const today = new Date();
+
+    // Generate slots for next 14 days
+    for (let day = 0; day < 14; day++) {
+      const date = new Date(today);
+      date.setDate(today.getDate() + day);
+
+      // Skip non-preferred days
+      const dayName = date.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+      if (preferences.preferredDays.length > 0 && !preferences.preferredDays.includes(dayName)) {
+        continue;
+      }
+
+      // Generate time slots based on preferences and doctor availability
+      const timeSlots = this.generateSmartTimeSlots(date, preferences, doctor);
+
+      optimizedSlots.push(...timeSlots);
+    }
+
+    return optimizedSlots.slice(0, 12); // Return first 12 slots
+  }
+
+  private calculateDoctorScore(doctor: Doctor, preferences: BookingPreferences, patientHistory?: any): number {
+    let score = 0;
+
+    // Specialty match (30% weight)
+    if (preferences.preferredSpecialties.includes(doctor.specialty)) {
+      score += 30;
+    }
+
+    // Rating (25% weight)
+    score += (doctor.rating / 5) * 25;
+
+    // Experience (15% weight)
+    if (doctor.experience) {
+      score += Math.min(doctor.experience / 10, 1) * 15;
+    }
+
+    // Availability (15% weight)
+    if (doctor.isOnline) {
+      score += 15;
+    }
+
+    // Reviews (10% weight)
+    score += Math.min(doctor.reviews / 100, 10);
+
+    return Math.min(100, score);
+  }
+
+  private generateMatchReasoning(doctor: Doctor, preferences: BookingPreferences): string {
+    const reasons = [];
+
+    if (preferences.preferredSpecialties.includes(doctor.specialty)) {
+      reasons.push(`Specializes in ${doctor.specialty}`);
+    }
+
+    if (doctor.rating >= 4.5) {
+      reasons.push('Highly rated by patients');
+    }
+
+    if (doctor.isOnline) {
+      reasons.push('Available for online consultations');
+    }
+
+    if (doctor.experience && doctor.experience > 5) {
+      reasons.push(`${doctor.experience} years of experience`);
+    }
+
+    return reasons.join(', ') || 'Good overall match for your needs';
+  }
+
+  private calculateWaitTime(doctor: Doctor): string {
+    // Simulate wait time calculation
+    const waitTimes = ['Available now', 'Next available: 30 min', 'Next available: 2 hours', 'Next available: Tomorrow'];
+    return waitTimes[Math.floor(Math.random() * waitTimes.length)];
+  }
+
+  private getConfidenceLevel(score: number): string {
+    if (score >= 80) return 'Very High';
+    if (score >= 60) return 'High';
+    if (score >= 40) return 'Medium';
+    return 'Low';
+  }
+
+  private generateSmartTimeSlots(date: Date, preferences: BookingPreferences, doctor: Doctor): TimeSlot[] {
+    const slots: TimeSlot[] = [];
+    const dayOfWeek = date.getDay();
+
+    // Generate time slots based on preferences
+    let startHour = 9;
+    let endHour = 17;
+
+    if (preferences.preferredTimeOfDay === 'morning') {
+      endHour = 12;
+    } else if (preferences.preferredTimeOfDay === 'afternoon') {
+      startHour = 13;
+    }
+
+    for (let hour = startHour; hour < endHour; hour++) {
+      for (const minute of [0, 30]) {
+        const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+        const dateString = date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+
+        slots.push({
+          id: `${doctor.id}-${date.toISOString().split('T')[0]}-${timeString}`,
+          date: dateString,
+          time: timeString,
+          available: Math.random() > 0.3, // 70% availability
+          doctorId: doctor.id,
+          price: doctor.price,
+          duration: 30
+        });
+      }
+    }
+
+    return slots.filter(slot => slot.available);
+  }
+
+  private async simulateProcessingDelay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 }
 

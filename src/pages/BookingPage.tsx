@@ -271,7 +271,7 @@ const BookingPage: React.FC = () => {
         <Alert severity="info" sx={{ mb: 3 }}>
           <Typography variant="body2">
             <SmartToy sx={{ mr: 1, verticalAlign: 'middle' }} />
-            Smart recommendations based on your preferences. Confidence: {Math.round(bookingResult.confidence * 100)}%
+            Smart recommendations based on your preferences. Confidence: {bookingResult.confidence ? Math.round(bookingResult.confidence * 100) : 'N/A'}%
           </Typography>
         </Alert>
       )}

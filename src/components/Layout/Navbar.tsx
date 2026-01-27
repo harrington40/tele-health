@@ -10,12 +10,14 @@ import {
   MenuItem,
   useMediaQuery,
   useTheme,
+  Divider,
 } from '@mui/material';
-import { Menu as MenuIcon, Person } from '@mui/icons-material';
+import { Menu as MenuIcon, Person, ExpandMore } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
 const Navbar: React.FC = () => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [legalAnchorEl, setLegalAnchorEl] = useState<null | HTMLElement>(null);
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -28,11 +30,28 @@ const Navbar: React.FC = () => {
     setAnchorEl(null);
   };
 
+  const handleLegalMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setLegalAnchorEl(event.currentTarget);
+  };
+
+  const handleLegalMenuClose = () => {
+    setLegalAnchorEl(null);
+  };
+
   const navigationItems = [
     { label: 'Home', path: '/' },
     { label: 'Doctors', path: '/doctors' },
     { label: 'Services', path: '/services' },
+    { label: 'Help Center', path: '/help' },
+    { label: 'Contact Us', path: '/contact' },
     { label: 'Book Appointment', path: '/booking' },
+  ];
+
+  const legalItems = [
+    { label: 'Privacy Policy', path: '/privacy' },
+    { label: 'Terms of Service', path: '/terms' },
+    { label: 'HIPAA Compliance', path: '/hipaa' },
+    { label: 'Accessibility', path: '/accessibility' },
   ];
 
   return (
@@ -79,6 +98,22 @@ const Navbar: React.FC = () => {
                   {item.label}
                 </MenuItem>
               ))}
+              <Divider />
+              <Typography variant="subtitle2" sx={{ px: 2, py: 1, color: 'text.secondary' }}>
+                Legal & Compliance
+              </Typography>
+              {legalItems.map((item) => (
+                <MenuItem
+                  key={item.path}
+                  onClick={() => {
+                    navigate(item.path);
+                    handleMenuClose();
+                  }}
+                >
+                  {item.label}
+                </MenuItem>
+              ))}
+              <Divider />
               <MenuItem
                 onClick={() => {
                   navigate('/auth');
@@ -101,6 +136,31 @@ const Navbar: React.FC = () => {
                 {item.label}
               </Button>
             ))}
+            <Button
+              color="inherit"
+              onClick={handleLegalMenuOpen}
+              endIcon={<ExpandMore />}
+              sx={{ color: 'text.primary' }}
+            >
+              Legal
+            </Button>
+            <Menu
+              anchorEl={legalAnchorEl}
+              open={Boolean(legalAnchorEl)}
+              onClose={handleLegalMenuClose}
+            >
+              {legalItems.map((item) => (
+                <MenuItem
+                  key={item.path}
+                  onClick={() => {
+                    navigate(item.path);
+                    handleLegalMenuClose();
+                  }}
+                >
+                  {item.label}
+                </MenuItem>
+              ))}
+            </Menu>
             <Button
               variant="outlined"
               startIcon={<Person />}

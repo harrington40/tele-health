@@ -11,6 +11,12 @@ import BookingPage from './pages/BookingPage';
 import ConsultationPage from './pages/ConsultationPage';
 import DashboardPage from './pages/DashboardPage';
 import ProviderDashboard from './pages/ProviderDashboard';
+import HelpCenterPage from './pages/HelpCenterPage';
+import ContactPage from './pages/ContactPage';
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
+import TermsOfServicePage from './pages/TermsOfServicePage';
+import HipaaCompliancePage from './pages/HipaaCompliancePage';
+import AccessibilityPage from './pages/AccessibilityPage';
 import AuthPage from './pages/AuthPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -38,6 +44,12 @@ const AppRoutes: React.FC = () => {
                 <Route path="/consultation/:id" element={<ConsultationPage />} />
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/provider-dashboard" element={<ProviderDashboard />} />
+                <Route path="/help" element={<HelpCenterPage />} />
+                <Route path="/contact" element={<ContactPage />} />
+                <Route path="/privacy" element={<PrivacyPolicyPage />} />
+                <Route path="/terms" element={<TermsOfServicePage />} />
+                <Route path="/hipaa" element={<HipaaCompliancePage />} />
+                <Route path="/accessibility" element={<AccessibilityPage />} />
                 <Route path="/auth" element={<AuthPage />} />
               </Routes>
             </Box>

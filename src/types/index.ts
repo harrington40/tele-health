@@ -89,11 +89,16 @@ export interface BookingPreferences {
 }
 
 export interface SmartBookingResult {
-  recommendedSlots: TimeSlot[];
-  alternativeSlots: TimeSlot[];
-  reasoning: string;
-  confidence: number;
+  recommendedSlots?: TimeSlot[];
+  alternativeSlots?: TimeSlot[];
+  reasoning?: string;
+  confidence?: number;
   reasons?: string[];
+  recommendedDoctor?: Doctor;
+  matchScore?: number;
+  alternativeOptions?: Doctor[];
+  estimatedWaitTime?: string;
+  confidenceLevel?: string;
 }
 
 export interface VideoSession {

@@ -7,7 +7,6 @@ import {
   Link,
   IconButton,
   Chip,
-  Avatar,
   Paper,
   Divider,
 } from '@mui/material';
@@ -26,8 +25,10 @@ import {
   Psychology,
   LocalHospital,
 } from '@mui/icons-material';
+import { useNavigate, Link as RouterLink } from 'react-router-dom';
 
 const Footer: React.FC = () => {
+  const navigate = useNavigate();
   return (
     <Box
       component="footer"
@@ -198,24 +199,92 @@ const Footer: React.FC = () => {
               Support & Legal
             </Typography>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-              <Link href="#" color="inherit" underline="hover">
+              <Box
+                component="button"
+                onClick={() => navigate('/help')}
+                sx={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'inherit',
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  fontSize: 'inherit',
+                  fontFamily: 'inherit',
+                  padding: 0,
+                  textDecoration: 'underline',
+                  '&:hover': {
+                    textDecoration: 'underline',
+                    color: 'primary.main'
+                  }
+                }}
+              >
                 Help Center
-              </Link>
-              <Link href="#" color="inherit" underline="hover">
+              </Box>
+              <RouterLink
+                to="/contact"
+                style={{
+                  color: 'inherit',
+                  textDecoration: 'underline',
+                  fontSize: 'inherit',
+                  fontFamily: 'inherit',
+                }}
+                onMouseEnter={(e) => (e.target as HTMLElement).style.color = '#2196f3'}
+                onMouseLeave={(e) => (e.target as HTMLElement).style.color = 'inherit'}
+              >
                 Contact Us
-              </Link>
-              <Link href="#" color="inherit" underline="hover">
+              </RouterLink>
+              <RouterLink
+                to="/privacy"
+                style={{
+                  color: 'inherit',
+                  textDecoration: 'underline',
+                  fontSize: 'inherit',
+                  fontFamily: 'inherit',
+                }}
+                onMouseEnter={(e) => (e.target as HTMLElement).style.color = '#2196f3'}
+                onMouseLeave={(e) => (e.target as HTMLElement).style.color = 'inherit'}
+              >
                 Privacy Policy
-              </Link>
-              <Link href="#" color="inherit" underline="hover">
+              </RouterLink>
+              <RouterLink
+                to="/terms"
+                style={{
+                  color: 'inherit',
+                  textDecoration: 'underline',
+                  fontSize: 'inherit',
+                  fontFamily: 'inherit',
+                }}
+                onMouseEnter={(e) => (e.target as HTMLElement).style.color = '#2196f3'}
+                onMouseLeave={(e) => (e.target as HTMLElement).style.color = 'inherit'}
+              >
                 Terms of Service
-              </Link>
-              <Link href="#" color="inherit" underline="hover">
+              </RouterLink>
+              <RouterLink
+                to="/hipaa"
+                style={{
+                  color: 'inherit',
+                  textDecoration: 'underline',
+                  fontSize: 'inherit',
+                  fontFamily: 'inherit',
+                }}
+                onMouseEnter={(e) => (e.target as HTMLElement).style.color = '#2196f3'}
+                onMouseLeave={(e) => (e.target as HTMLElement).style.color = 'inherit'}
+              >
                 HIPAA Compliance
-              </Link>
-              <Link href="#" color="inherit" underline="hover">
+              </RouterLink>
+              <RouterLink
+                to="/accessibility"
+                style={{
+                  color: 'inherit',
+                  textDecoration: 'underline',
+                  fontSize: 'inherit',
+                  fontFamily: 'inherit',
+                }}
+                onMouseEnter={(e) => (e.target as HTMLElement).style.color = '#2196f3'}
+                onMouseLeave={(e) => (e.target as HTMLElement).style.color = 'inherit'}
+              >
                 Accessibility
-              </Link>
+              </RouterLink>
             </Box>
           </Grid>
         </Grid>

@@ -285,10 +285,10 @@ export const useSmartBooking = () => {
           if (!prev.smartResults) return prev;
           
           // Randomly update slot availability
-          const updatedRecommended = prev.smartResults.recommendedSlots.map(slot => ({
+          const updatedRecommended = prev.smartResults.recommendedSlots?.map(slot => ({
             ...slot,
             available: Math.random() > 0.1 // 90% chance to remain available
-          }));
+          })) || [];
           
           return {
             ...prev,
