@@ -34,6 +34,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import CountrySelector from '../components/UI/CountrySelector';
 import { Country, getSmartCountrySuggestions } from '../types/countries';
+import { AsYouType, getCountryCallingCode, parsePhoneNumberFromString } from 'libphonenumber-js';
 
 interface RegisterPageProps {
   onRegister?: (userData: RegisterData) => Promise<void>;
@@ -54,6 +55,13 @@ interface RegisterData {
 }
 
 const steps = ['Account Type', 'Personal Info', 'Contact Details', 'Security'];
+
+// Mock existing users for validation
+const existingUsers = [
+  { email: 'john.doe@example.com', phone: '+1234567890' },
+  { email: 'jane.smith@example.com', phone: '+1987654321' },
+  { email: 'provider@test.com', phone: '+1555123456' },
+];
 
 const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister }) => {
   const { t } = useTranslation();
@@ -81,6 +89,7 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister }) => {
   const [specialtySuggestions, setSpecialtySuggestions] = useState<string[]>([]);
   const [passwordStrength, setPasswordStrength] = useState(0);
   const [smartSuggestions, setSmartSuggestions] = useState<string[]>([]);
+  const [phoneRaw, setPhoneRaw] = useState('');
 
   // Smart specialty suggestions based on country
   useEffect(() => {
@@ -114,6 +123,37 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister }) => {
       suggestions.push('Country selection enables local telemedicine options');
     }
 
+    // Contact details smart suggestions
+    if (activeStep === 2) {
+      if (!formData.country) {
+        suggestions.push('🌍 Select your country first for proper phone formatting');
+      } else {
+        const minDigits = getMinPhoneLength(formData.country.code);
+        const maxDigits = getMaxPhoneDigits(formData.country.code);
+        suggestions.push(`📱 ${formData.country.name}: Enter ${minDigits}-${maxDigits} digits`);
+        suggestions.push('💡 Start typing your phone number - it will auto-format');
+      }
+      
+      if (phoneRaw && formData.country) {
+        const minDigits = getMinPhoneLength(formData.country.code);
+        const maxDigits = getMaxPhoneDigits(formData.country.code);
+        const currentLength = phoneRaw.length;
+        
+        if (currentLength < minDigits) {
+          suggestions.push(`⚠️ Need ${minDigits - currentLength} more digit(s)`);
+        } else if (currentLength > maxDigits) {
+          suggestions.push(`⚠️ Too many digits (max ${maxDigits})`);
+        } else {
+          const phoneE164 = toE164(phoneRaw, formData.country.code);
+          if (phoneE164) {
+            suggestions.push('✅ Phone number format looks good!');
+          } else {
+            suggestions.push('⚠️ Phone number format needs correction');
+          }
+        }
+      }
+    }
+
     // Password strength feedback
     if (formData.password.length > 0) {
       if (passwordStrength < 3) {
@@ -131,7 +171,7 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister }) => {
     }
 
     setSmartSuggestions(suggestions);
-  }, [formData.userType, formData.password, formData.country, passwordStrength]);
+  }, [formData.userType, formData.password, formData.country, passwordStrength, activeStep, phoneRaw]);
 
   // Password strength calculation
   useEffect(() => {
@@ -147,6 +187,91 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister }) => {
     setPasswordStrength(strength);
   }, [formData.password]);
 
+  const formatPhone = (value: string, country: string) => {
+    // formats in national style while typing
+    return new AsYouType(country as any).input(value);
+  };
+
+  const toE164 = (value: string, country: string) => {
+    const p = parsePhoneNumberFromString(value, country as any);
+    return p?.isValid() ? p.number : null; // +2010...
+  };
+
+  const handlePhoneChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const input = event.target.value;
+    // Extract only digits
+    const digitsOnly = input.replace(/\D/g, '');
+    
+    // Get the maximum allowed digits for this country
+    const maxDigits = getMaxPhoneDigits(formData.country?.code || '');
+    
+    // Limit to maximum digits for the country
+    const limitedDigits = digitsOnly.slice(0, maxDigits);
+    
+    setPhoneRaw(limitedDigits);
+    
+    // Smart country detection from phone number
+    if (limitedDigits.length >= 3 && !formData.country) {
+      const detectedCountry = detectCountryFromPhone(limitedDigits);
+      if (detectedCountry) {
+        setFormData(prev => ({ ...prev, country: detectedCountry }));
+        setSmartSuggestions(prev => [...prev, `🌍 Auto-detected country: ${detectedCountry.name} from phone pattern`]);
+      }
+    }
+    
+    // Clear phone-related suggestions when typing
+    setSmartSuggestions(prev => prev.filter(s => !s.includes('📱') && !s.includes('Phone format')));
+  };
+
+  const getMaxPhoneDigits = (countryCode: string): number => {
+    // Maximum valid phone number digits for national numbers (excluding country code)
+    const maxLengths: { [key: string]: number } = {
+      'US': 10, 'CA': 10, 'GB': 10, 'FR': 9, 'DE': 10, 'IT': 9, 'ES': 9,
+      'NL': 9, 'SE': 7, 'NO': 8, 'DK': 8, 'IN': 10, 'CN': 11, 'JP': 10,
+      'KR': 10, 'BR': 10, 'MX': 10, 'ZA': 9, 'EG': 10, 'NG': 10, 'KE': 9,
+      'AU': 9, 'NZ': 9, 'SG': 8, 'MY': 9, 'TH': 9, 'VN': 9, 'PH': 10,
+      'ID': 10, 'PK': 10, 'BD': 10, 'GH': 9, 'TZ': 9, 'UG': 9, 'ZW': 9,
+      'MA': 9, 'TN': 8, 'DZ': 9, 'LY': 9, 'AO': 9, 'MZ': 8, 'BW': 7,
+      'NA': 7, 'ZM': 9
+    };
+    return maxLengths[countryCode] || 15; // Default maximum
+  };
+
+  const detectCountryFromPhone = (digits: string) => {
+    // Common country code patterns
+    const patterns = [
+      { prefix: '1', country: 'US' }, // USA/Canada
+      { prefix: '44', country: 'GB' }, // UK
+      { prefix: '33', country: 'FR' }, // France
+      { prefix: '49', country: 'DE' }, // Germany
+      { prefix: '39', country: 'IT' }, // Italy
+      { prefix: '34', country: 'ES' }, // Spain
+      { prefix: '31', country: 'NL' }, // Netherlands
+      { prefix: '46', country: 'SE' }, // Sweden
+      { prefix: '47', country: 'NO' }, // Norway
+      { prefix: '45', country: 'DK' }, // Denmark
+      { prefix: '91', country: 'IN' }, // India
+      { prefix: '86', country: 'CN' }, // China
+      { prefix: '81', country: 'JP' }, // Japan
+      { prefix: '82', country: 'KR' }, // South Korea
+      { prefix: '55', country: 'BR' }, // Brazil
+      { prefix: '52', country: 'MX' }, // Mexico
+      { prefix: '27', country: 'ZA' }, // South Africa
+      { prefix: '20', country: 'EG' }, // Egypt
+      { prefix: '234', country: 'NG' }, // Nigeria
+      { prefix: '254', country: 'KE' }, // Kenya
+    ];
+    
+    for (const pattern of patterns) {
+      if (digits.startsWith(pattern.prefix)) {
+        // Import countries data to find the country object
+        const countries = require('../types/countries').countries;
+        return countries.find((c: Country) => c.code === pattern.country) || null;
+      }
+    }
+    return null;
+  };
+
   const handleInputChange = (field: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({
       ...prev,
@@ -160,6 +285,14 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister }) => {
       ...prev,
       country,
     }));
+    // Reset phone formatting when country changes
+    setPhoneRaw('');
+    
+    // Smart suggestion for phone format
+    if (country) {
+      const suggestions = [`📱 Phone format: ${country.name} style (+${getCountryCallingCode(country.code as any)})`];
+      setSmartSuggestions(prev => [...prev.filter(s => !s.includes('📱')), ...suggestions]);
+    }
   };
 
   const validateStep = (step: number): boolean => {
@@ -169,7 +302,31 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister }) => {
       case 1: // Personal Info
         return !!(formData.firstName && formData.lastName && formData.email);
       case 2: // Contact Details
-        return !!(formData.phone && formData.country);
+        if (!phoneRaw || !formData.country) return false;
+        
+        // Validate phone number format and length
+        const phoneE164 = toE164(phoneRaw, formData.country.code);
+        const minDigits = getMinPhoneLength(formData.country.code);
+        const maxDigits = getMaxPhoneDigits(formData.country.code);
+        
+        // Check length first
+        if (phoneRaw.length < minDigits) {
+          setError(`Phone number too short for ${formData.country.name}. Minimum ${minDigits} digits required.`);
+          return false;
+        }
+        
+        if (phoneRaw.length > maxDigits) {
+          setError(`Phone number too long for ${formData.country.name}. Maximum ${maxDigits} digits allowed.`);
+          return false;
+        }
+        
+        // Then check format validity
+        if (!phoneE164) {
+          setError(`Invalid phone number format for ${formData.country.name}. Please enter a valid ${minDigits}-${maxDigits} digit number.`);
+          return false;
+        }
+        
+        return true;
       case 3: // Security
         return !!(
           formData.password &&
@@ -181,6 +338,20 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister }) => {
       default:
         return false;
     }
+  };
+
+  const getMinPhoneLength = (countryCode: string): number => {
+    // Minimum valid phone number digits for national numbers (excluding country code)
+    const minLengths: { [key: string]: number } = {
+      'US': 10, 'CA': 10, 'GB': 10, 'FR': 9, 'DE': 8, 'IT': 9, 'ES': 9,
+      'NL': 9, 'SE': 7, 'NO': 8, 'DK': 8, 'IN': 8, 'CN': 8, 'JP': 9,
+      'KR': 8, 'BR': 10, 'MX': 10, 'ZA': 9, 'EG': 10, 'NG': 10, 'KE': 9,
+      'AU': 9, 'NZ': 8, 'SG': 8, 'MY': 7, 'TH': 9, 'VN': 8, 'PH': 10,
+      'ID': 10, 'PK': 10, 'BD': 10, 'GH': 9, 'TZ': 9, 'UG': 9, 'ZW': 9,
+      'MA': 9, 'TN': 8, 'DZ': 9, 'LY': 9, 'AO': 9, 'MZ': 8, 'BW': 7,
+      'NA': 7, 'ZM': 9
+    };
+    return minLengths[countryCode] || 7; // Default minimum
   };
 
   const handleNext = () => {
@@ -201,12 +372,37 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister }) => {
       return;
     }
 
+    // Validate and format phone number
+    const phoneE164 = formData.country ? toE164(phoneRaw, formData.country.code) : null;
+    if (!phoneE164) {
+      setError('Please enter a valid phone number.');
+      return;
+    }
+
+    // Update formData with formatted phone
+    setFormData(prev => ({ ...prev, phone: phoneE164 }));
+
+    // Check if email or phone is already registered
+    const emailExists = existingUsers.some(user => user.email.toLowerCase() === formData.email.toLowerCase());
+    const phoneExists = existingUsers.some(user => user.phone === phoneE164);
+
+    if (emailExists) {
+      setError('This email address is already registered. Please use a different email or try logging in.');
+      return;
+    }
+
+    if (phoneExists) {
+      setError('This phone number is already registered. Please use a different phone number.');
+      return;
+    }
+
     setIsLoading(true);
     setError('');
 
     try {
+      const finalFormData = { ...formData, phone: phoneE164 };
       if (onRegister) {
-        await onRegister(formData);
+        await onRegister(finalFormData);
       } else {
         // Mock registration
         await new Promise(resolve => setTimeout(resolve, 2000));
@@ -398,16 +594,36 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister }) => {
             <TextField
               fullWidth
               label={t('register.phone', 'Phone Number')}
-              value={formData.phone}
-              onChange={handleInputChange('phone')}
+              value={formData.country && phoneRaw ? formatPhone(phoneRaw, formData.country.code) : phoneRaw}
+              onChange={handlePhoneChange}
               required
               sx={{ mb: 3 }}
+              helperText={formData.country ? 
+                `${formData.country.name} format (${getMinPhoneLength(formData.country.code)}-${getMaxPhoneDigits(formData.country.code)} digits)` : 
+                "Select country first"}
               InputProps={{
-                startAdornment: (
+                startAdornment: formData.country ? (
                   <InputAdornment position="start">
-                    <Phone />
+                    <Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>
+                      +{getCountryCallingCode(formData.country.code as any)}
+                    </Typography>
                   </InputAdornment>
-                ),
+                ) : null,
+                endAdornment: phoneRaw && formData.country ? (
+                  <InputAdornment position="end">
+                    {(() => {
+                      const minDigits = getMinPhoneLength(formData.country.code);
+                      const maxDigits = getMaxPhoneDigits(formData.country.code);
+                      const isValidLength = phoneRaw.length >= minDigits && phoneRaw.length <= maxDigits;
+                      const phoneE164 = toE164(phoneRaw, formData.country.code);
+                      const isValidFormat = !!phoneE164;
+                      
+                      if (isValidLength && isValidFormat) return <Typography variant="body2" color="success.main">✓</Typography>;
+                      if (!isValidLength) return <Typography variant="body2" color="warning.main">📏</Typography>;
+                      return <Typography variant="body2" color="error.main">⚠</Typography>;
+                    })()}
+                  </InputAdornment>
+                ) : null,
               }}
             />
 
