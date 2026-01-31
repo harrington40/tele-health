@@ -386,7 +386,7 @@ const ProviderDashboard: React.FC = () => {
   };
 
   // Enhanced CDS (Clinical Decision Support) handlers with comprehensive use case
-  const generateCDSRecommendations = useCallback((patient: Patient, encounterType: 'office_visit' | 'telehealth' | 'urgent_care' | 'emergency' = 'office_visit') => {
+  const generateCDSRecommendations = useCallback(async (patient: Patient, encounterType: 'office_visit' | 'telehealth' | 'urgent_care' | 'emergency' = 'office_visit') => {
     const cdsEngine = OpenCDSEngine.getInstance();
 
     // Enhanced CDS context with more comprehensive patient data
@@ -449,7 +449,7 @@ const ProviderDashboard: React.FC = () => {
       encounterType,
     };
 
-    const recommendations = cdsEngine.evaluateRules(context);
+    const recommendations = await cdsEngine.evaluateRules(context);
     setCdsRecommendations(recommendations);
     setSelectedPatientForCDS(patient);
 
@@ -511,7 +511,7 @@ const ProviderDashboard: React.FC = () => {
   };
 
   // Enhanced consultation workflow with CDS integration
-  const startConsultationWithCDS = useCallback((patient: Patient) => {
+  const startConsultationWithCDS = useCallback(async (patient: Patient) => {
     // Set patient as in consultation
     setWaitingRoom(prev => prev.map(p =>
       p.id === patient.id ? { ...p, status: 'in-consultation' as const } : p
@@ -527,7 +527,7 @@ const ProviderDashboard: React.FC = () => {
       'office_visit';
 
     // Generate CDS recommendations immediately
-    generateCDSRecommendations(patient, encounterType);
+    await generateCDSRecommendations(patient, encounterType);
 
     // Switch to consultation view
     setActiveTab(2); // Assuming consultation tab is index 2
@@ -537,14 +537,14 @@ const ProviderDashboard: React.FC = () => {
   }, [generateCDSRecommendations]);
 
   // Real-time CDS monitoring during consultation
-  const updateVitalSignsAndRefreshCDS = useCallback((patient: Patient, newVitals: Partial<VitalSigns>) => {
+  const updateVitalSignsAndRefreshCDS = useCallback(async (patient: Patient, newVitals: Partial<VitalSigns>) => {
     // In a real implementation, this would update the patient's vital signs
     // and trigger CDS re-evaluation
     console.log('Updating vital signs and refreshing CDS for patient:', patient.name, newVitals);
 
     // Re-generate CDS with updated vitals
-    setTimeout(() => {
-      generateCDSRecommendations(patient);
+    setTimeout(async () => {
+      await generateCDSRecommendations(patient);
     }, 1000); // Simulate API delay
   }, [generateCDSRecommendations]);
 

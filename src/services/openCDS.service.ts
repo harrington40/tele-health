@@ -10,11 +10,13 @@ import {
   LabOrder,
   Medication
 } from '../types';
+import OpenFDAService from './openFDA.service';
 
 export class OpenCDSEngine {
   private static instance: OpenCDSEngine;
   private rules: CDSRule[] = [];
   private knowledgeSources: CDSKnowledgeSource[] = [];
+  private openFDAService: OpenFDAService;
 
   public static getInstance(): OpenCDSEngine {
     if (!OpenCDSEngine.instance) {
@@ -24,6 +26,7 @@ export class OpenCDSEngine {
   }
 
   constructor() {
+    this.openFDAService = new OpenFDAService();
     this.initializeRules();
     this.initializeKnowledgeSources();
   }
@@ -263,11 +266,15 @@ export class OpenCDSEngine {
   }
 
   /**
-   * Evaluate CDS rules against patient context
+   * Evaluate CDS rules against patient context with OpenFDA integration
    */
-  evaluateRules(context: CDSContext): CDSRecommendation[] {
+  async evaluateRules(context: CDSContext): Promise<CDSRecommendation[]> {
     const recommendations: CDSRecommendation[] = [];
     const triggeredRules = this.rules.filter(rule => this.evaluateRule(rule, context));
+
+    // Add OpenFDA-based recommendations
+    const openFDAReccommendations = await this.generateOpenFDABasedRecommendations(context);
+    recommendations.push(...openFDAReccommendations);
 
     triggeredRules.forEach(rule => {
       const recommendation = this.generateRecommendation(rule, context);
@@ -509,5 +516,127 @@ export class OpenCDSEngine {
    */
   removeRule(ruleId: string): void {
     this.rules = this.rules.filter(r => r.id !== ruleId);
+  }
+
+  /**
+   * Generate OpenFDA-based recommendations
+   */
+  private async generateOpenFDABasedRecommendations(context: CDSContext): Promise<CDSRecommendation[]> {
+    const recommendations: CDSRecommendation[] = [];
+
+    // Check current medications for safety issues
+    if (context.currentMedications && context.currentMedications.length > 0) {
+      for (const medication of context.currentMedications) {
+        const drugName = medication.medicationName || medication.name;
+
+        try {
+          // Check for recalls
+          const hasRecalls = await this.openFDAService.checkDrugRecalls(drugName);
+          if (hasRecalls) {
+            recommendations.push({
+              id: `openfda_recall_${medication.id}_${Date.now()}`,
+              ruleId: 'openfda_recall_check',
+              patientId: context.patient.id,
+              providerId: 1,
+              title: `URGENT: ${drugName} Recall Alert`,
+              description: `${drugName} has been recalled. Please review alternative treatment options immediately.`,
+              category: 'alert',
+              priority: 'critical',
+              severity: 'critical',
+              supportingEvidence: 'OpenFDA Drug Recall Database',
+              suggestedActions: [
+                'Stop current prescription',
+                'Contact patient immediately',
+                'Prescribe alternative medication',
+                'Monitor patient closely'
+              ],
+              alternatives: [],
+              contraindications: [],
+              confidence: 0.95,
+              triggeredConditions: [],
+              knowledgeSources: ['openfda'],
+              timestamp: new Date().toISOString(),
+              status: 'pending'
+            });
+          }
+
+          // Check for adverse events and safety information
+          const safetyStats = await this.openFDAService.getDrugUsageStats(drugName);
+          if (safetyStats.seriousEvents > 10) {
+            recommendations.push({
+              id: `openfda_safety_${medication.id}_${Date.now()}`,
+              ruleId: 'openfda_safety_check',
+              patientId: context.patient.id,
+              providerId: 1,
+              title: `Review ${drugName} Safety Profile`,
+              description: `${drugName} has ${safetyStats.seriousEvents} reported serious adverse events. Consider risk-benefit analysis.`,
+              category: 'alert',
+              priority: 'high',
+              severity: 'warning',
+              supportingEvidence: `OpenFDA Adverse Events Database: ${safetyStats.adverseEventCount} total events, ${safetyStats.seriousEvents} serious`,
+              suggestedActions: [
+                'Review patient risk factors',
+                'Consider dose adjustment',
+                'Monitor for adverse effects',
+                'Discuss risks with patient'
+              ],
+              alternatives: [],
+              contraindications: [],
+              confidence: Math.min(0.8, safetyStats.seriousEvents / 100),
+              triggeredConditions: [],
+              knowledgeSources: ['openfda'],
+              timestamp: new Date().toISOString(),
+              status: 'pending'
+            });
+          }
+
+          // Check for drug interactions
+          const interactions = await this.openFDAService.getDrugInteractions(drugName);
+          if (interactions.interactions.length > 0) {
+            // Check if patient is taking interacting drugs
+            const currentDrugNames = context.currentMedications.map(m => m.medicationName || m.name);
+            const relevantInteractions = interactions.interactions.filter(interaction =>
+              currentDrugNames.some(drug =>
+                interaction.toLowerCase().includes(drug.toLowerCase()) &&
+                !interaction.toLowerCase().includes(drugName.toLowerCase())
+              )
+            );
+
+            if (relevantInteractions.length > 0) {
+              recommendations.push({
+                id: `openfda_interaction_${medication.id}_${Date.now()}`,
+                ruleId: 'openfda_interaction_check',
+                patientId: context.patient.id,
+                providerId: 1,
+                title: `Potential Drug Interaction: ${drugName}`,
+                description: `${drugName} may interact with other medications. Review concurrent prescriptions.`,
+                category: 'alert',
+                priority: 'high',
+                severity: 'warning',
+                supportingEvidence: `OpenFDA Drug Interactions: ${relevantInteractions.join(', ')}`,
+                suggestedActions: [
+                  'Review all concurrent medications',
+                  'Check drug interaction databases',
+                  'Consider dose adjustments',
+                  'Monitor for interaction symptoms'
+                ],
+                alternatives: [],
+                contraindications: relevantInteractions,
+                confidence: 0.85,
+                triggeredConditions: [],
+                knowledgeSources: ['openfda'],
+                timestamp: new Date().toISOString(),
+                status: 'pending'
+              });
+            }
+          }
+
+        } catch (error) {
+          console.error(`Error checking OpenFDA data for ${drugName}:`, error);
+        }
+      }
+    }
+
+    return recommendations;
   }
 }
