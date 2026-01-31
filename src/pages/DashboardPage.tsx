@@ -42,6 +42,7 @@ import { useNavigate } from 'react-router-dom';
 import VideoConsultation from '../components/VideoConsultation';
 import { VideoSession } from '../types';
 import { useAuth } from '../contexts/AuthContext';
+import { getCountryFromPhoneNumber } from '../types/countries';
 
 interface HealthMetric {
   id: string;
@@ -89,6 +90,33 @@ const DashboardPage: React.FC = () => {
   const [healthScore] = useState(85);
   const [showVideoDialog, setShowVideoDialog] = useState(false);
   const [activeVideoSession, setActiveVideoSession] = useState<VideoSession | null>(null);
+
+  // Helper function to format user's name as "J. LastName"
+  const formatUserName = (firstName?: string, lastName?: string): string => {
+    if (!firstName && !lastName) return 'User';
+    if (!firstName) return lastName!;
+    if (!lastName) return firstName;
+    
+    return `${firstName.charAt(0)}. ${lastName}`;
+  };
+
+  // Helper function to get country from phone number
+  const getUserCountry = (phoneNumber?: string, storedCountry?: { code: string; name: string }): string => {
+    // First check if country is already stored
+    if (storedCountry?.name) {
+      return storedCountry.name;
+    }
+    
+    // If not stored, try to detect from phone number
+    if (phoneNumber) {
+      const detectedCountry = getCountryFromPhoneNumber(phoneNumber);
+      if (detectedCountry) {
+        return detectedCountry.name;
+      }
+    }
+    
+    return 'Country not set';
+  };
 
   // Mock data - in real app, this would come from API
   const healthMetrics: HealthMetric[] = [
@@ -282,7 +310,7 @@ const DashboardPage: React.FC = () => {
       {/* Header */}
       <Box sx={{ mb: 4 }}>
         <Typography variant="h3" component="h1" gutterBottom sx={{ fontWeight: 'bold' }}>
-          Welcome back, {user?.firstName || 'User'}! 👋
+          Welcome back, {formatUserName(user?.firstName, user?.lastName)}! 👋
         </Typography>
         <Typography variant="h6" color="text.secondary">
           Your health dashboard powered by AI insights
@@ -396,7 +424,7 @@ const DashboardPage: React.FC = () => {
                       📧 {user.email} | 📱 {user.phone}
                     </Typography>
                     <Typography variant="body2" sx={{ opacity: 0.8 }}>
-                      {user.country?.name || 'Country not set'} • Member since {new Date(user.createdAt).toLocaleDateString()}
+                      {getUserCountry(user.phone, user.country)} • Member since {new Date(user.createdAt).toLocaleDateString()}
                     </Typography>
                     {user.emergencyContact && (
                       <Typography variant="body2" sx={{ mt: 1, opacity: 0.8 }}>

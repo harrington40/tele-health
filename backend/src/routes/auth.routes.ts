@@ -6,6 +6,83 @@ const r = require('rethinkdb');
 
 const router = express.Router();
 
+// Simple country detection from phone number
+const getCountryFromPhone = (phoneNumber: string) => {
+  if (!phoneNumber || !phoneNumber.startsWith('+')) {
+    return null;
+  }
+
+  const countryCodes: { [key: string]: { code: string; name: string } } = {
+    '+255': { code: 'TZ', name: 'Tanzania' },
+    '+254': { code: 'KE', name: 'Kenya' },
+    '+256': { code: 'UG', name: 'Uganda' },
+    '+250': { code: 'RW', name: 'Rwanda' },
+    '+257': { code: 'BI', name: 'Burundi' },
+    '+243': { code: 'CD', name: 'Democratic Republic of the Congo' },
+    '+234': { code: 'NG', name: 'Nigeria' },
+    '+233': { code: 'GH', name: 'Ghana' },
+    '+27': { code: 'ZA', name: 'South Africa' },
+    '+20': { code: 'EG', name: 'Egypt' },
+    '+251': { code: 'ET', name: 'Ethiopia' },
+    '+1': { code: 'US', name: 'United States' },
+    '+44': { code: 'GB', name: 'United Kingdom' },
+    '+49': { code: 'DE', name: 'Germany' },
+    '+33': { code: 'FR', name: 'France' },
+    '+39': { code: 'IT', name: 'Italy' },
+    '+34': { code: 'ES', name: 'Spain' },
+    '+31': { code: 'NL', name: 'Netherlands' },
+    '+46': { code: 'SE', name: 'Sweden' },
+    '+47': { code: 'NO', name: 'Norway' },
+    '+45': { code: 'DK', name: 'Denmark' },
+    '+358': { code: 'FI', name: 'Finland' },
+    '+48': { code: 'PL', name: 'Poland' },
+    '+420': { code: 'CZ', name: 'Czech Republic' },
+    '+36': { code: 'HU', name: 'Hungary' },
+    '+40': { code: 'RO', name: 'Romania' },
+    '+30': { code: 'GR', name: 'Greece' },
+    '+90': { code: 'TR', name: 'Turkey' },
+    '+7': { code: 'RU', name: 'Russia' },
+    '+86': { code: 'CN', name: 'China' },
+    '+81': { code: 'JP', name: 'Japan' },
+    '+82': { code: 'KR', name: 'South Korea' },
+    '+91': { code: 'IN', name: 'India' },
+    '+65': { code: 'SG', name: 'Singapore' },
+    '+60': { code: 'MY', name: 'Malaysia' },
+    '+66': { code: 'TH', name: 'Thailand' },
+    '+84': { code: 'VN', name: 'Vietnam' },
+    '+62': { code: 'ID', name: 'Indonesia' },
+    '+63': { code: 'PH', name: 'Philippines' },
+    '+61': { code: 'AU', name: 'Australia' },
+    '+64': { code: 'NZ', name: 'New Zealand' },
+    '+55': { code: 'BR', name: 'Brazil' },
+    '+52': { code: 'MX', name: 'Mexico' },
+    '+54': { code: 'AR', name: 'Argentina' },
+    '+56': { code: 'CL', name: 'Chile' },
+    '+57': { code: 'CO', name: 'Colombia' },
+    '+58': { code: 'VE', name: 'Venezuela' },
+    '+51': { code: 'PE', name: 'Peru' },
+    '+593': { code: 'EC', name: 'Ecuador' },
+    '+598': { code: 'UY', name: 'Uruguay' },
+    '+595': { code: 'PY', name: 'Paraguay' },
+    '+507': { code: 'PA', name: 'Panama' },
+    '+506': { code: 'CR', name: 'Costa Rica' },
+    '+503': { code: 'SV', name: 'El Salvador' },
+    '+502': { code: 'GT', name: 'Guatemala' },
+    '+504': { code: 'HN', name: 'Honduras' },
+    '+505': { code: 'NI', name: 'Nicaragua' },
+  };
+
+  // Try different lengths of calling codes
+  for (let length = 4; length >= 1; length--) {
+    const callingCode = phoneNumber.substring(0, length + 1);
+    if (countryCodes[callingCode]) {
+      return countryCodes[callingCode];
+    }
+  }
+
+  return null;
+};
+
 // Register patient
 router.post('/register/patient', async (req: Request, res: Response): Promise<void> => {
   try {
@@ -39,6 +116,9 @@ router.post('/register/patient', async (req: Request, res: Response): Promise<vo
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // Detect country from phone number
+    const detectedCountry = getCountryFromPhone(phone);
+
     // Create user
     const user = {
       email,
@@ -47,6 +127,7 @@ router.post('/register/patient', async (req: Request, res: Response): Promise<vo
       last_name,
       phone,
       user_type: 'patient',
+      country: detectedCountry,
       consent_to_terms: consent_to_terms || false,
       consent_to_privacy: consent_to_privacy || false,
       hipaa_consent: hipaa_consent || false,
@@ -195,7 +276,8 @@ router.get('/me', async (req: Request, res: Response): Promise<void> => {
         first_name: user.first_name,
         last_name: user.last_name,
         phone: user.phone,
-        user_type: user.user_type
+        user_type: user.user_type,
+        country: user.country
       }
     });
   } catch (error) {

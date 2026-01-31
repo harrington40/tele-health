@@ -55,7 +55,7 @@ db.connect().then(() => {
 });
 
 // Start server regardless of DB status
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
   console.log('Server started successfully');
   console.log('Listening...');

@@ -84,6 +84,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             email: user.email,
             phone: user.phone,
             userType: user.user_type === 'patient' ? 'client' : user.user_type,
+            country: user.country,
             profilePicture: '/api/placeholder/150/150',
             dateOfBirth: '',
             gender: '',

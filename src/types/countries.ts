@@ -1208,3 +1208,22 @@ export const getSmartCountrySuggestions = (userTimezone?: string, userLanguage?:
 
   return prioritizedCountries.slice(0, 12); // Return top 12 suggestions
 };
+
+// Function to detect country from phone number
+export const getCountryFromPhoneNumber = (phoneNumber: string): Country | null => {
+  if (!phoneNumber || !phoneNumber.startsWith('+')) {
+    return null;
+  }
+
+  // Extract the calling code from the phone number
+  // Try different lengths of calling codes (1-4 digits)
+  for (let length = 4; length >= 1; length--) {
+    const callingCode = phoneNumber.substring(0, length + 1); // +1 for the +
+    const country = COUNTRIES.find(c => c.callingCode === callingCode);
+    if (country) {
+      return country;
+    }
+  }
+
+  return null;
+};
