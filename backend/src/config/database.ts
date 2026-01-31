@@ -10,7 +10,9 @@ class DatabaseConnection {
       this.connection = await r.connect({
         host: config.rethinkdb.host,
         port: config.rethinkdb.port,
-        db: config.rethinkdb.db
+        db: config.rethinkdb.db,
+        user: config.rethinkdb.user || 'admin',
+        password: config.rethinkdb.authKey || ''
       });
 
       console.log('✅ Connected to RethinkDB');

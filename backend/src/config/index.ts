@@ -11,7 +11,9 @@ export const config = {
   rethinkdb: {
     host: process.env.RETHINKDB_HOST || 'localhost',
     port: parseInt(process.env.RETHINKDB_PORT || '28015', 10),
-    db: process.env.RETHINKDB_DB || 'telehealth'
+    db: process.env.RETHINKDB_DB || 'telehealth',
+    user: process.env.RETHINKDB_USER || 'admin',
+    authKey: process.env.RETHINKDB_AUTH_KEY || ''
   },
 
   // MQTT

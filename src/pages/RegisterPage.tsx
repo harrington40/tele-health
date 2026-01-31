@@ -35,6 +35,7 @@ import { useTranslation } from 'react-i18next';
 import CountrySelector from '../components/UI/CountrySelector';
 import { Country, getSmartCountrySuggestions } from '../types/countries';
 import { AsYouType, getCountryCallingCode, parsePhoneNumberFromString } from 'libphonenumber-js';
+import { useAuth } from '../contexts/AuthContext';
 
 interface RegisterPageProps {
   onRegister?: (userData: RegisterData) => Promise<void>;
@@ -66,6 +67,7 @@ const existingUsers = [
 const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const [activeStep, setActiveStep] = useState(0);
   const [formData, setFormData] = useState<RegisterData>({
@@ -197,6 +199,108 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister }) => {
     return p?.isValid() ? p.number : null; // +2010...
   };
 
+  const getPhonePlaceholder = (country: Country | null): string => {
+    if (!country) return 'Select country first';
+    
+    const examples: { [key: string]: string } = {
+      'US': '(555) 123-4567',
+      'CA': '(555) 123-4567',
+      'GB': '07123 456789',
+      'FR': '06 12 34 56 78',
+      'DE': '0151 23456789',
+      'IT': '312 345 6789',
+      'ES': '612 345 678',
+      'NL': '06 12345678',
+      'SE': '070 123 45 67',
+      'NO': '412 34 567',
+      'DK': '20 12 34 56',
+      'IN': '98765 43210',
+      'CN': '138 0013 8000',
+      'JP': '090 1234 5678',
+      'KR': '010-1234-5678',
+      'BR': '(11) 91234-5678',
+      'MX': '55 1234 5678',
+      'ZA': '071 123 4567',
+      'EG': '010 1234 5678',
+      'NG': '0803 123 4567',
+      'KE': '0712 345678',
+      'AU': '0412 345 678',
+      'NZ': '021 123 4567',
+      'SG': '8123 4567',
+      'MY': '012 345 6789',
+      'TH': '081 234 5678',
+      'VN': '091 234 5678',
+      'PH': '0917 123 4567',
+      'ID': '0812 3456 7890',
+      'PK': '0300 1234567',
+      'BD': '01712 345678',
+      // African countries
+      'DZ': '0551 234 567',
+      'AO': '923 456 789',
+      'BJ': '90 123 456',
+      'BW': '71 234 567',
+      'BF': '70 123 456',
+      'BI': '79 123 456',
+      'CV': '991 23 45',
+      'CM': '67 123 45 67',
+      'CF': '70 123 456',
+      'TD': '66 123 456',
+      'KM': '321 23 45',
+      'CG': '06 123 45 67',
+      'CD': '99 123 45 67',
+      'DJ': '77 123 456',
+      'GQ': '55 123 45 67',
+      'ER': '71 234 56',
+      'SZ': '76 123 456',
+      'ET': '91 123 45 67',
+      'GA': '06 123 456',
+      'GM': '301 23 45',
+      'GH': '20 123 45 67',
+      'GN': '621 23 45 67',
+      'GW': '951 23 45',
+      'CI': '07 123 45 67',
+      'LS': '50 123 456',
+      'LR': '77 123 45 67',
+      'LY': '91 123 45 67',
+      'MG': '34 123 45 67',
+      'MW': '99 123 45 67',
+      'ML': '70 123 456',
+      'MR': '45 123 456',
+      'MU': '57 123 456',
+      'MA': '612 345 678',
+      'MZ': '84 123 45 67',
+      'NA': '81 123 45 67',
+      'NE': '90 123 456',
+      'RW': '78 123 45 67',
+      'ST': '981 23 45',
+      'SN': '70 123 45 67',
+      'SC': '2 512 345',
+      'SL': '76 123 456',
+      'SO': '61 234 56 78',
+      'SS': '91 234 56 78',
+      'SD': '91 123 45 67',
+      'TZ': '71 234 56 78',
+      'TG': '90 123 456',
+      'TN': '20 123 456',
+      'UG': '78 123 45 67',
+      'ZM': '97 123 45 67',
+      'ZW': '77 123 45 67',
+    };
+    
+    return examples[country.code] || `${country.name} phone number`;
+  };
+
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const checkEmailExists = async (email: string): Promise<boolean> => {
+    // In a real app, this would be an API call
+    // For now, check against mock data
+    return existingUsers.some(user => user.email.toLowerCase() === email.toLowerCase());
+  };
+
   const handlePhoneChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const input = event.target.value;
     // Extract only digits
@@ -300,7 +404,14 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister }) => {
       case 0: // Account Type
         return !!formData.userType;
       case 1: // Personal Info
-        return !!(formData.firstName && formData.lastName && formData.email);
+        if (!formData.firstName || !formData.lastName || !formData.email) {
+          return false;
+        }
+        if (!validateEmail(formData.email)) {
+          setError('Please enter a valid email address.');
+          return false;
+        }
+        return true;
       case 2: // Contact Details
         if (!phoneRaw || !formData.country) return false;
         
@@ -382,12 +493,17 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister }) => {
     // Update formData with formatted phone
     setFormData(prev => ({ ...prev, phone: phoneE164 }));
 
-    // Check if email or phone is already registered
-    const emailExists = existingUsers.some(user => user.email.toLowerCase() === formData.email.toLowerCase());
-    const phoneExists = existingUsers.some(user => user.phone === phoneE164);
-
+    // Check if email is already registered
+    const emailExists = await checkEmailExists(formData.email);
     if (emailExists) {
       setError('This email address is already registered. Please use a different email or try logging in.');
+      return;
+    }
+
+    // Check if phone is already registered
+    const phoneExists = existingUsers.some(user => user.phone === phoneE164);
+    if (phoneExists) {
+      setError('This phone number is already registered. Please use a different phone number.');
       return;
     }
 
@@ -404,13 +520,69 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister }) => {
       if (onRegister) {
         await onRegister(finalFormData);
       } else {
-        // Mock registration
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        // Register with backend API
+        const response = await fetch('http://localhost:8081/api/auth/register/patient', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            email: finalFormData.email,
+            password: finalFormData.password,
+            first_name: finalFormData.firstName,
+            last_name: finalFormData.lastName,
+            phone: finalFormData.phone,
+            consent_to_terms: true,
+            consent_to_privacy: true,
+            hipaa_consent: true
+          }),
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Registration failed');
+        }
+
+        const data = await response.json();
+
+        // Transform to frontend User format
+        const newUser = {
+          id: data.user.id,
+          firstName: data.user.first_name,
+          lastName: data.user.last_name,
+          email: data.user.email,
+          phone: data.user.phone,
+          userType: data.user.user_type === 'patient' ? 'client' : data.user.user_type,
+          country: finalFormData.country ? {
+            code: finalFormData.country.code,
+            name: finalFormData.country.name
+          } : undefined,
+          profilePicture: '/api/placeholder/150/150',
+          dateOfBirth: '', // Not collected in registration
+          gender: '', // Not collected in registration
+          address: '', // Not collected in registration
+          emergencyContact: undefined, // Not collected in registration
+          medicalHistory: [], // Not collected in registration
+          allergies: [], // Not collected in registration
+          currentMedications: [], // Not collected in registration
+          insuranceInfo: undefined, // Not collected in registration
+          preferences: {
+            language: 'en',
+            notifications: true,
+            marketingEmails: false
+          },
+          createdAt: new Date().toISOString(),
+          lastLoginAt: new Date().toISOString()
+        };
+
+        // The cookie is set by the backend, AuthContext will load user via /me
+
         // Redirect based on user type
-        if (formData.userType === 'provider') {
+        if (finalFormData.userType === 'provider') {
           navigate('/provider-dashboard');
         } else {
-          navigate('/login');
+          navigate('/dashboard');
         }
       }
     } catch (err) {
@@ -523,6 +695,8 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister }) => {
               value={formData.email}
               onChange={handleInputChange('email')}
               required
+              error={formData.email !== '' && !validateEmail(formData.email)}
+              helperText={formData.email !== '' && !validateEmail(formData.email) ? 'Please enter a valid email address' : ''}
               sx={{ mb: 2 }}
               InputProps={{
                 startAdornment: (
@@ -594,6 +768,7 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister }) => {
             <TextField
               fullWidth
               label={t('register.phone', 'Phone Number')}
+              placeholder={getPhonePlaceholder(formData.country)}
               value={formData.country && phoneRaw ? formatPhone(phoneRaw, formData.country.code) : phoneRaw}
               onChange={handlePhoneChange}
               required

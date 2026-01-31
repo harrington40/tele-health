@@ -41,6 +41,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import VideoConsultation from '../components/VideoConsultation';
 import { VideoSession } from '../types';
+import { useAuth } from '../contexts/AuthContext';
 
 interface HealthMetric {
   id: string;
@@ -84,6 +85,7 @@ interface Medication {
 
 const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [healthScore] = useState(85);
   const [showVideoDialog, setShowVideoDialog] = useState(false);
   const [activeVideoSession, setActiveVideoSession] = useState<VideoSession | null>(null);
@@ -149,7 +151,15 @@ const DashboardPage: React.FC = () => {
     }
   ];
 
-  const medications: Medication[] = [
+  const medications: Medication[] = user?.currentMedications ? 
+    user.currentMedications.map((med, index) => ({
+      id: (index + 1).toString(),
+      name: med,
+      dosage: 'As prescribed', // In real app, this would come from API
+      frequency: 'As directed', // In real app, this would come from API
+      nextDose: 'Check schedule', // In real app, this would come from API
+      remaining: 30 // Mock data
+    })) : [
     {
       id: '1',
       name: 'Lisinopril',
@@ -222,7 +232,7 @@ const DashboardPage: React.FC = () => {
         },
         {
           id: '1', // Mock patient ID (current user)
-          name: 'You', // In real app, get from user context
+          name: user ? `${user.firstName} ${user.lastName}` : 'You', // Use real user name
           role: 'Patient',
           isConnected: true,
           hasVideo: true,
@@ -272,7 +282,7 @@ const DashboardPage: React.FC = () => {
       {/* Header */}
       <Box sx={{ mb: 4 }}>
         <Typography variant="h3" component="h1" gutterBottom sx={{ fontWeight: 'bold' }}>
-          Welcome back, John! 👋
+          Welcome back, {user?.firstName || 'User'}! 👋
         </Typography>
         <Typography variant="h6" color="text.secondary">
           Your health dashboard powered by AI insights
@@ -355,6 +365,54 @@ const DashboardPage: React.FC = () => {
           </Card>
         </Grid>
       </Grid>
+
+      {/* User Profile Summary */}
+      {user && (
+        <Grid container spacing={3} sx={{ mb: 4 }}>
+          <Grid item xs={12}>
+            <Card sx={{ 
+              background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', 
+              color: 'white',
+              transition: 'all 0.3s ease-in-out',
+              '&:hover': {
+                transform: 'translateY(-8px)',
+                boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
+              },
+              boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
+            }}>
+              <CardContent>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                  <Avatar
+                    src={user.profilePicture}
+                    sx={{ width: 80, height: 80, border: '4px solid white' }}
+                  >
+                    {user.firstName?.[0]}{user.lastName?.[0]}
+                  </Avatar>
+                  <Box sx={{ flex: 1 }}>
+                    <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 1 }}>
+                      {user.firstName} {user.lastName}
+                    </Typography>
+                    <Typography variant="body1" sx={{ mb: 1, opacity: 0.9 }}>
+                      📧 {user.email} | 📱 {user.phone}
+                    </Typography>
+                    <Typography variant="body2" sx={{ opacity: 0.8 }}>
+                      {user.country?.name || 'Country not set'} • Member since {new Date(user.createdAt).toLocaleDateString()}
+                    </Typography>
+                    {user.emergencyContact && (
+                      <Typography variant="body2" sx={{ mt: 1, opacity: 0.8 }}>
+                        🚨 Emergency: {user.emergencyContact.name} ({user.emergencyContact.phone})
+                      </Typography>
+                    )}
+                  </Box>
+                  <Button variant="contained" sx={{ bgcolor: 'rgba(255,255,255,0.2)', '&:hover': { bgcolor: 'rgba(255,255,255,0.3)' } }}>
+                    Edit Profile
+                  </Button>
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+      )}
 
       {/* Health Metrics */}
       <Typography variant="h4" sx={{ mb: 3, fontWeight: 'bold' }}>
@@ -536,6 +594,82 @@ const DashboardPage: React.FC = () => {
           </Card>
         </Grid>
       </Grid>
+
+      {/* Medical Information */}
+      {user && ((user.medicalHistory && user.medicalHistory.length > 0) || (user.allergies && user.allergies.length > 0)) && (
+        <Grid container spacing={3} sx={{ mb: 4 }}>
+          <Grid item xs={12} md={6}>
+            <Card sx={{ 
+              height: '100%',
+              transition: 'all 0.3s ease-in-out',
+              '&:hover': {
+                transform: 'translateY(-8px)',
+                boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
+              },
+              boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
+            }}>
+              <CardContent>
+                <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2, display: 'flex', alignItems: 'center' }}>
+                  <HealthAndSafety sx={{ mr: 1 }} />
+                  Medical History
+                </Typography>
+                {user.medicalHistory && user.medicalHistory.length > 0 ? (
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                    {user.medicalHistory.map((condition, index) => (
+                      <Chip
+                        key={index}
+                        label={condition}
+                        variant="outlined"
+                        color="primary"
+                        size="small"
+                      />
+                    ))}
+                  </Box>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">
+                    No medical history recorded
+                  </Typography>
+                )}
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <Card sx={{ 
+              height: '100%',
+              transition: 'all 0.3s ease-in-out',
+              '&:hover': {
+                transform: 'translateY(-8px)',
+                boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
+              },
+              boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
+            }}>
+              <CardContent>
+                <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2, display: 'flex', alignItems: 'center' }}>
+                  <Notifications sx={{ mr: 1 }} />
+                  Allergies & Restrictions
+                </Typography>
+                {user.allergies && user.allergies.length > 0 ? (
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                    {user.allergies.map((allergy, index) => (
+                      <Chip
+                        key={index}
+                        label={allergy}
+                        variant="outlined"
+                        color="warning"
+                        size="small"
+                      />
+                    ))}
+                  </Box>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">
+                    No allergies recorded
+                  </Typography>
+                )}
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+      )}
 
       {/* Appointment History with Notifications */}
       <Typography variant="h4" sx={{ mb: 3, fontWeight: 'bold', mt: 4 }}>

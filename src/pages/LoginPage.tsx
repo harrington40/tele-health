@@ -33,6 +33,7 @@ import {
 } from '@mui/icons-material';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useAuth } from '../contexts/AuthContext';
 
 interface LoginPageProps {
   onLogin?: (email: string, password: string, rememberMe: boolean) => Promise<void>;
@@ -47,6 +48,7 @@ const LoginPage: React.FC<LoginPageProps> = ({
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { login, isLoading: authLoading } = useAuth();
 
   const [formData, setFormData] = useState({
     email: '',
@@ -148,19 +150,16 @@ const LoginPage: React.FC<LoginPageProps> = ({
       if (onLogin) {
         await onLogin(formData.email, formData.password, formData.rememberMe);
       } else {
-        // Mock login for demo
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        if (formData.email && formData.password) {
-          // Simple provider detection based on email domain
-          const isProvider = formData.email.includes('doctor') ||
-                           formData.email.includes('hospital') ||
-                           formData.email.includes('clinic') ||
-                           formData.email.includes('med') ||
-                           formData.email.includes('healthcare');
+        // Use auth context for login
+        await login(formData.email, formData.password, formData.rememberMe);
 
-          navigate(isProvider ? '/provider-dashboard' : '/dashboard');
+        // Navigate based on user type
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          const userData = JSON.parse(storedUser);
+          navigate(userData.userType === 'provider' ? '/provider-dashboard' : '/dashboard');
         } else {
-          throw new Error('Please fill in all fields');
+          navigate('/dashboard');
         }
       }
     } catch (err) {
