@@ -48,7 +48,7 @@ const LoginPage: React.FC<LoginPageProps> = ({
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { login, isLoading: authLoading } = useAuth();
+  const { login, logout, isLoading: authLoading, user, isAuthenticated } = useAuth();
 
   const [formData, setFormData] = useState({
     email: '',
@@ -62,6 +62,18 @@ const LoginPage: React.FC<LoginPageProps> = ({
   const [smartSuggestions, setSmartSuggestions] = useState<string[]>([]);
   const [emailSuggestions, setEmailSuggestions] = useState<string[]>([]);
   const [loginAttempts, setLoginAttempts] = useState(0);
+  const [showAlreadyLoggedIn, setShowAlreadyLoggedIn] = useState(false);
+
+  // Check if user is already authenticated
+  useEffect(() => {
+    if (isAuthenticated && user && !authLoading) {
+      console.log('User already authenticated:', user);
+      console.log('User type:', user.userType);
+      setShowAlreadyLoggedIn(true);
+    } else {
+      setShowAlreadyLoggedIn(false);
+    }
+  }, [isAuthenticated, user, authLoading]);
 
   // Smart email suggestions and security monitoring
   useEffect(() => {
@@ -151,16 +163,18 @@ const LoginPage: React.FC<LoginPageProps> = ({
         await onLogin(formData.email, formData.password, formData.rememberMe);
       } else {
         // Use auth context for login
-        await login(formData.email, formData.password, formData.rememberMe);
+        const loggedInUser = await login(formData.email, formData.password, formData.rememberMe);
 
-        // Navigate based on user type
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) {
-          const userData = JSON.parse(storedUser);
-          navigate(userData.userType === 'provider' ? '/provider-dashboard' : '/dashboard');
-        } else {
-          navigate('/dashboard');
-        }
+        // Show success message briefly before redirecting
+        setError(''); // Clear any errors
+        
+        // Navigate based on user type after a brief delay
+        console.log('Logged in user:', loggedInUser);
+        console.log('User type:', loggedInUser.userType);
+        
+        setTimeout(() => {
+          navigate(loggedInUser.userType === 'provider' ? '/provider-dashboard' : '/dashboard');
+        }, 500); // Small delay to show success
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
@@ -204,10 +218,81 @@ const LoginPage: React.FC<LoginPageProps> = ({
     }
   };
 
+  const handleContinueToDashboard = () => {
+    if (user) {
+      navigate(user.userType === 'provider' ? '/provider-dashboard' : '/dashboard');
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      setShowAlreadyLoggedIn(false);
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
+
   return (
     <Container component="main" maxWidth="sm" sx={{ py: 4 }}>
-      <Grow in={true} timeout={600}>
-        <Paper
+      {showAlreadyLoggedIn && user ? (
+        <Grow in={true} timeout={600}>
+          <Paper
+            elevation={8}
+            sx={{
+              p: 4,
+              borderRadius: 3,
+              background: 'linear-gradient(135deg, #4caf50 0%, #2e7d32 100%)',
+              color: 'white',
+              textAlign: 'center',
+            }}
+          >
+            <Typography variant="h4" gutterBottom fontWeight="bold">
+              ✅ Already Logged In
+            </Typography>
+            <Typography variant="h6" sx={{ mb: 2 }}>
+              Welcome back, {user.firstName} {user.lastName}!
+            </Typography>
+            <Typography variant="body1" sx={{ mb: 3, opacity: 0.9 }}>
+              You are currently logged in as a {user.userType === 'provider' ? 'Healthcare Provider' : 'Patient'}.
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <Button
+                variant="contained"
+                color="primary"
+                size="large"
+                onClick={handleContinueToDashboard}
+                sx={{
+                  backgroundColor: 'white',
+                  color: 'primary.main',
+                  '&:hover': {
+                    backgroundColor: 'rgba(255,255,255,0.9)',
+                  },
+                }}
+              >
+                Continue to Dashboard
+              </Button>
+              <Button
+                variant="outlined"
+                size="large"
+                onClick={handleLogout}
+                sx={{
+                  borderColor: 'white',
+                  color: 'white',
+                  '&:hover': {
+                    borderColor: 'rgba(255,255,255,0.8)',
+                    backgroundColor: 'rgba(255,255,255,0.1)',
+                  },
+                }}
+              >
+                Logout & Login as Different User
+              </Button>
+            </Box>
+          </Paper>
+        </Grow>
+      ) : (
+        <Grow in={true} timeout={600}>
+          <Paper
           elevation={8}
           sx={{
             p: 4,
@@ -510,7 +595,7 @@ const LoginPage: React.FC<LoginPageProps> = ({
               </Button>
             </Box>
 
-            {/* Demo Provider Login Hint */}
+            {/* Demo Login Credentials */}
             <Box sx={{ textAlign: 'center', mb: 2 }}>
               <Alert
                 severity="info"
@@ -522,8 +607,14 @@ const LoginPage: React.FC<LoginPageProps> = ({
                   '& .MuiAlert-icon': { color: 'white' }
                 }}
               >
-                <Typography variant="body2">
-                  💡 Demo: Use any email with "doctor", "hospital", or "clinic" to access Provider Dashboard
+                <Typography variant="body2" sx={{ mb: 1 }}>
+                  🔑 Test Credentials:
+                </Typography>
+                <Typography variant="body2" sx={{ fontSize: '0.8rem' }}>
+                  Doctor: dr.johnson@telehealth.com / doctor123
+                </Typography>
+                <Typography variant="body2" sx={{ fontSize: '0.8rem' }}>
+                  Patient: patient@test.com / patient123
                 </Typography>
               </Alert>
             </Box>
@@ -638,6 +729,7 @@ const LoginPage: React.FC<LoginPageProps> = ({
           </Box>
         </Paper>
       </Grow>
+      )}
     </Container>
   );
 };

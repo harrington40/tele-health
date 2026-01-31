@@ -17,6 +17,16 @@ export interface Doctor {
   workingHours?: { [key: string]: string };
   services?: string[];
   patientReviews?: PatientReview[];
+  // Discount and pricing features
+  discountSettings?: {
+    isEnabled: boolean;
+    discountPercentage: number;
+    discountDescription: string;
+    startDate: string;
+    endDate: string;
+    applicableServices?: string[];
+  };
+  pricingHistory?: PricingActivity[];
 }
 
 export interface PatientReview {
@@ -25,6 +35,18 @@ export interface PatientReview {
   rating: number;
   comment: string;
   date: string;
+}
+
+export interface PricingActivity {
+  id: string;
+  doctorId: number;
+  action: 'discount_enabled' | 'discount_disabled' | 'discount_updated' | 'price_changed';
+  oldPrice?: number;
+  newPrice?: number;
+  discountPercentage?: number;
+  description: string;
+  timestamp: string;
+  metadata?: any;
 }
 
 export interface Appointment {

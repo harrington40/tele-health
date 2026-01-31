@@ -69,4 +69,61 @@ export class DoctorController {
       res.status(500).json({ error: 'Internal server error' });
     }
   }
+
+  static updateDoctorDiscount(req: Request, res: Response): void {
+    try {
+      const { id } = req.params;
+      const { discountSettings } = req.body;
+      
+      const doctorIndex = doctors.findIndex((d) => d.id === parseInt(id));
+      
+      if (doctorIndex === -1) {
+        res.status(404).json({ error: 'Doctor not found' });
+        return;
+      }
+
+      // Update discount settings
+      doctors[doctorIndex].discountSettings = discountSettings;
+
+      // Add to pricing history
+      const activity = {
+        id: Date.now().toString(),
+        doctorId: parseInt(id),
+        action: discountSettings.isEnabled ? 'discount_enabled' : 'discount_disabled',
+        description: discountSettings.isEnabled 
+          ? `Enabled ${discountSettings.discountPercentage}% discount`
+          : 'Disabled active discount',
+        timestamp: new Date().toISOString(),
+        discountPercentage: discountSettings.discountPercentage,
+      };
+
+      if (!doctors[doctorIndex].pricingHistory) {
+        doctors[doctorIndex].pricingHistory = [];
+      }
+      doctors[doctorIndex].pricingHistory!.unshift(activity);
+
+      res.json({ 
+        message: 'Discount settings updated successfully',
+        doctor: doctors[doctorIndex]
+      });
+    } catch (error) {
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+
+  static getDoctorPricingHistory(req: Request, res: Response): void {
+    try {
+      const { id } = req.params;
+      const doctor = doctors.find((d) => d.id === parseInt(id));
+
+      if (!doctor) {
+        res.status(404).json({ error: 'Doctor not found' });
+        return;
+      }
+
+      res.json(doctor.pricingHistory || []);
+    } catch (error) {
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
 }

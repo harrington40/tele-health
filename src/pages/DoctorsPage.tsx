@@ -218,6 +218,13 @@ const DoctorsPage: React.FC = () => {
       image: '/api/placeholder/120/120',
       location: 'Online',
       isOnline: true,
+      discountSettings: {
+        isEnabled: true,
+        discountPercentage: 20,
+        discountDescription: 'New patient special offer',
+        startDate: new Date().toISOString(),
+        endDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      },
     },
     {
       id: 2,
@@ -230,6 +237,13 @@ const DoctorsPage: React.FC = () => {
       image: '/api/placeholder/120/120',
       location: 'Online',
       isOnline: true,
+      discountSettings: {
+        isEnabled: true,
+        discountPercentage: 15,
+        discountDescription: 'Weekend special discount',
+        startDate: new Date().toISOString(),
+        endDate: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
+      },
     },
     {
       id: 3,
@@ -439,7 +453,11 @@ const DoctorsPage: React.FC = () => {
     if (!bookingDoctor || !selectedTimeSlot) return;
 
     // Here you would typically send the booking to your backend
-    alert(`🎉 Booking confirmed with ${bookingDoctor.name}!\n\n📅 Date & Time: ${selectedTimeSlot.date} at ${selectedTimeSlot.time}\n💰 Amount: $${bookingDoctor.price}\n📧 Confirmation email sent!`);
+    const finalPrice = bookingDoctor.discountSettings?.isEnabled 
+      ? Math.round(bookingDoctor.price * (1 - (bookingDoctor.discountSettings.discountPercentage / 100)))
+      : bookingDoctor.price;
+    
+    alert(`🎉 Booking confirmed with ${bookingDoctor.name}!\n\n📅 Date & Time: ${selectedTimeSlot.date} at ${selectedTimeSlot.time}\n💰 Amount: $${finalPrice}${bookingDoctor.discountSettings?.isEnabled ? ` (${bookingDoctor.discountSettings.discountPercentage}% off from $${bookingDoctor.price})` : ''}\n📧 Confirmation email sent!`);
 
     // Reset booking state
     setBookingOpen(false);
@@ -664,9 +682,26 @@ const DoctorsPage: React.FC = () => {
                   
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <Box>
-                      <Typography variant="h6" color="primary.main" sx={{ fontWeight: 'bold', fontSize: '1.2rem' }}>
-                        ${doctor.price}
-                      </Typography>
+                      {doctor.discountSettings?.isEnabled ? (
+                        <>
+                          <Typography variant="h6" color="error.main" sx={{ fontWeight: 'bold', fontSize: '1.2rem' }}>
+                            ${Math.round(doctor.price * (1 - (doctor.discountSettings.discountPercentage / 100)))}
+                          </Typography>
+                          <Typography variant="caption" sx={{ textDecoration: 'line-through', color: 'text.secondary' }}>
+                            ${doctor.price}
+                          </Typography>
+                          <Chip 
+                            label={`${doctor.discountSettings.discountPercentage}% OFF`} 
+                            size="small" 
+                            color="error" 
+                            sx={{ ml: 1, fontSize: '0.7rem' }} 
+                          />
+                        </>
+                      ) : (
+                        <Typography variant="h6" color="primary.main" sx={{ fontWeight: 'bold', fontSize: '1.2rem' }}>
+                          ${doctor.price}
+                        </Typography>
+                      )}
                       <Typography variant="caption" color="text.secondary">
                         per consultation
                       </Typography>

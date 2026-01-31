@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Container,
   Typography,
@@ -19,6 +19,13 @@ import {
   Alert,
   Dialog,
   DialogContent,
+  DialogTitle,
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  IconButton,
 } from '@mui/material';
 import {
   Favorite,
@@ -37,12 +44,17 @@ import {
   SmartToy,
   Schedule,
   Person,
+  Close,
+  Save,
+  ContactEmergency,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import VideoConsultation from '../components/VideoConsultation';
 import { VideoSession } from '../types';
 import { useAuth } from '../contexts/AuthContext';
-import { getCountryFromPhoneNumber } from '../types/countries';
+import { getCountryFromPhoneNumber, Country, COUNTRIES } from '../types/countries';
+import { AsYouType, parsePhoneNumberFromString } from 'libphonenumber-js';
+import { authAPI } from '../services/api';
 
 interface HealthMetric {
   id: string;
@@ -86,10 +98,76 @@ interface Medication {
 
 const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const [healthScore] = useState(85);
   const [showVideoDialog, setShowVideoDialog] = useState(false);
+  const [showEmergencyDialog, setShowEmergencyDialog] = useState(false);
   const [activeVideoSession, setActiveVideoSession] = useState<VideoSession | null>(null);
+
+  // Emergency contact form state
+  const [emergencyName, setEmergencyName] = useState(user?.emergencyContact?.name || '');
+  const [emergencyPhone, setEmergencyPhone] = useState(user?.emergencyContact?.phone || '');
+  const [emergencyRelationship, setEmergencyRelationship] = useState(user?.emergencyContact?.relationship || '');
+  const [emergencyCountry, setEmergencyCountry] = useState<Country | null>(null);
+  const [emergencyProvince, setEmergencyProvince] = useState('');
+  const [phoneRaw, setPhoneRaw] = useState('');
+
+  // Update form state when dialog opens
+  useEffect(() => {
+    if (showEmergencyDialog && user?.emergencyContact) {
+      setEmergencyName(user.emergencyContact.name);
+      setEmergencyPhone(user.emergencyContact.phone);
+      setEmergencyRelationship(user.emergencyContact.relationship || '');
+      
+      // Detect country from existing phone number
+      if (user.emergencyContact.phone) {
+        const detectedCountry = getCountryFromPhoneNumber(user.emergencyContact.phone);
+        if (detectedCountry) {
+          setEmergencyCountry(detectedCountry);
+        }
+        // Extract raw phone number for formatting
+        const phoneObj = parsePhoneNumberFromString(user.emergencyContact.phone);
+        if (phoneObj) {
+          setPhoneRaw(phoneObj.nationalNumber);
+        }
+      }
+    } else if (showEmergencyDialog) {
+      // Reset form for new contact
+      setEmergencyName('');
+      setEmergencyPhone('');
+      setEmergencyRelationship('');
+      setEmergencyCountry(null);
+      setEmergencyProvince('');
+      setPhoneRaw('');
+    }
+  }, [showEmergencyDialog, user?.emergencyContact]);
+
+  // Phone formatting functions
+  const formatEmergencyPhone = (value: string) => {
+    if (!emergencyCountry) return value;
+    return new AsYouType(emergencyCountry.code as any).input(value);
+  };
+
+  const handlePhoneChange = (value: string) => {
+    setPhoneRaw(value.replace(/\D/g, '')); // Store raw digits only
+    const formatted = formatEmergencyPhone(value);
+    setEmergencyPhone(formatted);
+  };
+
+  // Auto-detect country when phone number changes
+  useEffect(() => {
+    if (phoneRaw && phoneRaw.length >= 3) {
+      // Try to detect country from phone number
+      const testNumber = `+${phoneRaw}`;
+      const detectedCountry = getCountryFromPhoneNumber(testNumber);
+      if (detectedCountry && (!emergencyCountry || emergencyCountry.code !== detectedCountry.code)) {
+        setEmergencyCountry(detectedCountry);
+        // Reformat with detected country
+        const formatted = formatEmergencyPhone(phoneRaw);
+        setEmergencyPhone(formatted);
+      }
+    }
+  }, [phoneRaw, emergencyCountry]);
 
   // Helper function to format user's name as "J. LastName"
   const formatUserName = (firstName?: string, lastName?: string): string => {
@@ -367,27 +445,94 @@ const DashboardPage: React.FC = () => {
         </Grid>
 
         <Grid item xs={12} md={4}>
-          <Card sx={{ 
-            height: '100%', 
-            background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', 
+          <Card sx={{
+            height: '100%',
+            background: 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%, #fecfef 100%)',
             color: 'white',
+            borderRadius: 3,
+            overflow: 'hidden',
+            position: 'relative',
             transition: 'all 0.3s ease-in-out',
+            cursor: 'pointer',
             '&:hover': {
               transform: 'translateY(-8px)',
-              boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
+              boxShadow: '0 20px 40px rgba(0,0,0,0.15)',
+              '&::before': {
+                transform: 'scale(1.05)',
+              }
             },
-            boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'url("data:image/svg+xml,%3Csvg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="none" fill-rule="evenodd"%3E%3Cg fill="%23ffffff" fill-opacity="0.05"%3E%3Ccircle cx="30" cy="30" r="4"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")',
+              transition: 'transform 0.3s ease-in-out',
+            }
           }}>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <HealthAndSafety sx={{ fontSize: 48, mb: 2 }} />
-              <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1 }}>
-                Emergency Ready
+            <CardContent sx={{ position: 'relative', zIndex: 1, textAlign: 'center', p: 3 }}>
+              <Box sx={{
+                bgcolor: 'rgba(255,255,255,0.2)',
+                borderRadius: '50%',
+                p: 2,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                mb: 2,
+                boxShadow: '0 8px 32px rgba(0,0,0,0.1)'
+              }}>
+                <HealthAndSafety sx={{ fontSize: 32, color: 'white' }} />
+              </Box>
+
+              <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1, fontSize: '1.1rem' }}>
+                🚨 Emergency Ready
               </Typography>
-              <Typography variant="body2" sx={{ opacity: 0.9, mb: 2 }}>
-                Your emergency contacts are up to date
+
+              <Typography variant="body2" sx={{ opacity: 0.9, mb: 2, lineHeight: 1.4 }}>
+                {user?.emergencyContact
+                  ? `Emergency contact: ${user.emergencyContact.name}`
+                  : 'No emergency contact set'
+                }
               </Typography>
-              <Button variant="contained" color="secondary" size="small">
-                Update Contacts
+
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, mb: 2 }}>
+                <Box sx={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: '50%',
+                  bgcolor: user?.emergencyContact ? '#4caf50' : '#ff9800',
+                  boxShadow: `0 0 10px ${user?.emergencyContact ? '#4caf50' : '#ff9800'}50`
+                }} />
+                <Typography variant="caption" sx={{ fontWeight: 'medium', opacity: 0.9 }}>
+                  {user?.emergencyContact ? 'Contacts Updated' : 'Setup Required'}
+                </Typography>
+              </Box>
+
+              <Button
+                variant="contained"
+                size="small"
+                onClick={() => setShowEmergencyDialog(true)}
+                sx={{
+                  bgcolor: 'rgba(255,255,255,0.2)',
+                  color: 'white',
+                  border: '1px solid rgba(255,255,255,0.3)',
+                  borderRadius: 2,
+                  px: 2,
+                  py: 0.75,
+                  fontSize: '0.8rem',
+                  fontWeight: 'bold',
+                  textTransform: 'none',
+                  transition: 'all 0.2s ease-in-out',
+                  '&:hover': {
+                    bgcolor: 'rgba(255,255,255,0.3)',
+                    transform: 'translateY(-1px)',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+                  }
+                }}
+              >
+                {user?.emergencyContact ? 'Update Contacts' : 'Add Emergency Contact'}
               </Button>
             </CardContent>
           </Card>
@@ -398,43 +543,230 @@ const DashboardPage: React.FC = () => {
       {user && (
         <Grid container spacing={3} sx={{ mb: 4 }}>
           <Grid item xs={12}>
-            <Card sx={{ 
-              background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', 
+            <Card sx={{
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
               color: 'white',
-              transition: 'all 0.3s ease-in-out',
-              '&:hover': {
-                transform: 'translateY(-8px)',
-                boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
-              },
-              boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
+              borderRadius: 3,
+              overflow: 'hidden',
+              position: 'relative',
+              '&::before': {
+                content: '""',
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: 'rgba(255,255,255,0.1)',
+                backdropFilter: 'blur(10px)',
+              }
             }}>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                  <Avatar
-                    src={user.profilePicture}
-                    sx={{ width: 80, height: 80, border: '4px solid white' }}
-                  >
-                    {user.firstName?.[0]}{user.lastName?.[0]}
-                  </Avatar>
-                  <Box sx={{ flex: 1 }}>
-                    <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 1 }}>
-                      {user.firstName} {user.lastName}
-                    </Typography>
-                    <Typography variant="body1" sx={{ mb: 1, opacity: 0.9 }}>
-                      📧 {user.email} | 📱 {user.phone}
-                    </Typography>
-                    <Typography variant="body2" sx={{ opacity: 0.8 }}>
-                      {getUserCountry(user.phone, user.country)} • Member since {new Date(user.createdAt).toLocaleDateString()}
-                    </Typography>
-                    {user.emergencyContact && (
-                      <Typography variant="body2" sx={{ mt: 1, opacity: 0.8 }}>
-                        🚨 Emergency: {user.emergencyContact.name} ({user.emergencyContact.phone})
-                      </Typography>
-                    )}
+              <CardContent sx={{ position: 'relative', zIndex: 1, p: 4 }}>
+                <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 4 }}>
+                  {/* Profile Avatar Section */}
+                  <Box sx={{ textAlign: 'center', minWidth: 120 }}>
+                    <Avatar
+                      src={user.profilePicture}
+                      sx={{
+                        width: 100,
+                        height: 100,
+                        border: '4px solid rgba(255,255,255,0.3)',
+                        mx: 'auto',
+                        mb: 2,
+                        boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+                        fontSize: '2.5rem'
+                      }}
+                    >
+                      {user.firstName?.[0]}{user.lastName?.[0]}
+                    </Avatar>
+                    <Chip
+                      label="Active Patient"
+                      sx={{
+                        bgcolor: 'rgba(255,255,255,0.2)',
+                        color: 'white',
+                        fontWeight: 'bold',
+                        '& .MuiChip-label': { fontSize: '0.75rem' }
+                      }}
+                    />
                   </Box>
-                  <Button variant="contained" sx={{ bgcolor: 'rgba(255,255,255,0.2)', '&:hover': { bgcolor: 'rgba(255,255,255,0.3)' } }}>
-                    Edit Profile
-                  </Button>
+
+                  {/* Main Information Section */}
+                  <Box sx={{ flex: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+                      <Typography variant="h4" sx={{ fontWeight: 'bold', fontSize: '2rem' }}>
+                        {user.firstName} {user.lastName}
+                      </Typography>
+                      <Chip
+                        label={user.userType || 'Patient'}
+                        sx={{
+                          bgcolor: 'rgba(76, 175, 80, 0.9)',
+                          color: 'white',
+                          fontWeight: 'bold'
+                        }}
+                      />
+                    </Box>
+
+                    {/* Contact Information Grid */}
+                    <Grid container spacing={3} sx={{ mb: 3 }}>
+                      <Grid item xs={12} md={6}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                          <Box sx={{
+                            bgcolor: 'rgba(255,255,255,0.2)',
+                            borderRadius: '50%',
+                            p: 1,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}>
+                            📧
+                          </Box>
+                          <Box>
+                            <Typography variant="body2" sx={{ opacity: 0.8, fontSize: '0.75rem' }}>
+                              Email Address
+                            </Typography>
+                            <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
+                              {user.email}
+                            </Typography>
+                          </Box>
+                        </Box>
+                      </Grid>
+
+                      <Grid item xs={12} md={6}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                          <Box sx={{
+                            bgcolor: 'rgba(255,255,255,0.2)',
+                            borderRadius: '50%',
+                            p: 1,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}>
+                            📱
+                          </Box>
+                          <Box>
+                            <Typography variant="body2" sx={{ opacity: 0.8, fontSize: '0.75rem' }}>
+                              Phone Number
+                            </Typography>
+                            <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
+                              {user.phone}
+                            </Typography>
+                          </Box>
+                        </Box>
+                      </Grid>
+
+                      <Grid item xs={12} md={6}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                          <Box sx={{
+                            bgcolor: 'rgba(255,255,255,0.2)',
+                            borderRadius: '50%',
+                            p: 1,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}>
+                            🌍
+                          </Box>
+                          <Box>
+                            <Typography variant="body2" sx={{ opacity: 0.8, fontSize: '0.75rem' }}>
+                              Location
+                            </Typography>
+                            <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
+                              {getUserCountry(user.phone, user.country)}
+                            </Typography>
+                          </Box>
+                        </Box>
+                      </Grid>
+
+                      <Grid item xs={12} md={6}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                          <Box sx={{
+                            bgcolor: 'rgba(255,255,255,0.2)',
+                            borderRadius: '50%',
+                            p: 1,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}>
+                            📅
+                          </Box>
+                          <Box>
+                            <Typography variant="body2" sx={{ opacity: 0.8, fontSize: '0.75rem' }}>
+                              Member Since
+                            </Typography>
+                            <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
+                              {new Date(user.createdAt).toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric'
+                              })}
+                            </Typography>
+                          </Box>
+                        </Box>
+                      </Grid>
+                    </Grid>
+
+                    {/* Emergency Contact */}
+                    {user.emergencyContact && (
+                      <Box sx={{
+                        bgcolor: 'rgba(255,255,255,0.1)',
+                        borderRadius: 2,
+                        p: 2,
+                        border: '1px solid rgba(255,255,255,0.2)',
+                        mb: 3
+                      }}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                          🚨 Emergency Contact
+                        </Typography>
+                        <Typography variant="body2" sx={{ mb: 1 }}>
+                          {user.emergencyContact.name} • {user.emergencyContact.phone}
+                          {user.emergencyContact.relationship && (
+                            <span style={{ opacity: 0.8 }}> ({user.emergencyContact.relationship})</span>
+                          )}
+                        </Typography>
+                        {(user.emergencyContact.country || user.emergencyContact.province) && (
+                          <Typography variant="body2" sx={{ opacity: 0.8, fontSize: '0.75rem' }}>
+                            {user.emergencyContact.country?.flag} {user.emergencyContact.country?.name}
+                            {user.emergencyContact.province && ` • ${user.emergencyContact.province}`}
+                          </Typography>
+                        )}
+                      </Box>
+                    )}
+
+                    {/* Action Buttons */}
+                    <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                      <Button
+                        variant="contained"
+                        startIcon={<Person />}
+                        sx={{
+                          bgcolor: 'rgba(255,255,255,0.2)',
+                          color: 'white',
+                          border: '1px solid rgba(255,255,255,0.3)',
+                          '&:hover': {
+                            bgcolor: 'rgba(255,255,255,0.3)',
+                            transform: 'translateY(-2px)'
+                          },
+                          transition: 'all 0.2s ease-in-out'
+                        }}
+                      >
+                        Edit Profile
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        startIcon={<MedicalServices />}
+                        sx={{
+                          color: 'white',
+                          borderColor: 'rgba(255,255,255,0.3)',
+                          '&:hover': {
+                            bgcolor: 'rgba(255,255,255,0.1)',
+                            borderColor: 'rgba(255,255,255,0.5)',
+                            transform: 'translateY(-2px)'
+                          },
+                          transition: 'all 0.2s ease-in-out'
+                        }}
+                      >
+                        Medical Records
+                      </Button>
+                    </Box>
+                  </Box>
                 </Box>
               </CardContent>
             </Card>
@@ -928,6 +1260,333 @@ const DashboardPage: React.FC = () => {
           </Grid>
         </Grid>
       </Box>
+
+      {/* Emergency Contact Dialog */}
+      <Dialog
+        open={showEmergencyDialog}
+        onClose={() => setShowEmergencyDialog(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            color: 'white'
+          }
+        }}
+      >
+        <DialogTitle sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          pb: 1
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <ContactEmergency sx={{ fontSize: 28 }} />
+            <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+              Emergency Contact
+            </Typography>
+          </Box>
+          <IconButton
+            onClick={() => setShowEmergencyDialog(false)}
+            sx={{ color: 'white' }}
+          >
+            <Close />
+          </IconButton>
+        </DialogTitle>
+
+        <DialogContent sx={{ pt: 2 }}>
+          <Typography variant="body2" sx={{ mb: 3, opacity: 0.9 }}>
+            Add or update your emergency contact information. This person will be contacted in case of medical emergencies.
+          </Typography>
+
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <TextField
+              fullWidth
+              label="Full Name"
+              variant="outlined"
+              value={emergencyName}
+              onChange={(e) => setEmergencyName(e.target.value)}
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  bgcolor: 'rgba(255,255,255,0.1)',
+                  color: 'white',
+                  '& fieldset': {
+                    borderColor: 'rgba(255,255,255,0.3)',
+                  },
+                  '&:hover fieldset': {
+                    borderColor: 'rgba(255,255,255,0.5)',
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: 'white',
+                  },
+                },
+                '& .MuiInputLabel-root': {
+                  color: 'rgba(255,255,255,0.7)',
+                  '&.Mui-focused': {
+                    color: 'white',
+                  },
+                },
+                '& .MuiOutlinedInput-input': {
+                  color: 'white',
+                },
+              }}
+            />
+
+            <FormControl fullWidth>
+              <InputLabel sx={{
+                color: 'rgba(255,255,255,0.7)',
+                '&.Mui-focused': {
+                  color: 'white',
+                },
+              }}>
+                Country
+              </InputLabel>
+              <Select
+                value={emergencyCountry?.code || ''}
+                onChange={(e) => {
+                  const selectedCountry = COUNTRIES.find(c => c.code === e.target.value);
+                  setEmergencyCountry(selectedCountry || null);
+                  // Reformat phone with new country
+                  if (phoneRaw) {
+                    const formatted = formatEmergencyPhone(phoneRaw);
+                    setEmergencyPhone(formatted);
+                  }
+                }}
+                sx={{
+                  bgcolor: 'rgba(255,255,255,0.1)',
+                  color: 'white',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'rgba(255,255,255,0.3)',
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'rgba(255,255,255,0.5)',
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'white',
+                  },
+                  '& .MuiSelect-icon': {
+                    color: 'rgba(255,255,255,0.7)',
+                  },
+                }}
+              >
+                {COUNTRIES.map((country) => (
+                  <MenuItem key={country.code} value={country.code}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <span>{country.flag}</span>
+                      <span>{country.name}</span>
+                      <span style={{ opacity: 0.6 }}>(+{country.callingCode})</span>
+                    </Box>
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <TextField
+              fullWidth
+              label="Phone Number"
+              variant="outlined"
+              value={emergencyPhone}
+              onChange={(e) => handlePhoneChange(e.target.value)}
+              placeholder={emergencyCountry ? `+${emergencyCountry.callingCode} XXX XXX XXX` : "Select country first"}
+              disabled={!emergencyCountry}
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  bgcolor: 'rgba(255,255,255,0.1)',
+                  color: 'white',
+                  '& fieldset': {
+                    borderColor: 'rgba(255,255,255,0.3)',
+                  },
+                  '&:hover fieldset': {
+                    borderColor: 'rgba(255,255,255,0.5)',
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: 'white',
+                  },
+                  '&.Mui-disabled': {
+                    '& fieldset': {
+                      borderColor: 'rgba(255,255,255,0.2)',
+                    },
+                  },
+                },
+                '& .MuiInputLabel-root': {
+                  color: 'rgba(255,255,255,0.7)',
+                  '&.Mui-focused': {
+                    color: 'white',
+                  },
+                  '&.Mui-disabled': {
+                    color: 'rgba(255,255,255,0.5)',
+                  },
+                },
+                '& .MuiOutlinedInput-input': {
+                  color: 'white',
+                  '&.Mui-disabled': {
+                    color: 'rgba(255,255,255,0.5)',
+                    WebkitTextFillColor: 'rgba(255,255,255,0.5)',
+                  },
+                },
+              }}
+            />
+
+            <TextField
+              fullWidth
+              label="Province/State"
+              variant="outlined"
+              value={emergencyProvince}
+              onChange={(e) => setEmergencyProvince(e.target.value)}
+              placeholder="Enter province or state"
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  bgcolor: 'rgba(255,255,255,0.1)',
+                  color: 'white',
+                  '& fieldset': {
+                    borderColor: 'rgba(255,255,255,0.3)',
+                  },
+                  '&:hover fieldset': {
+                    borderColor: 'rgba(255,255,255,0.5)',
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: 'white',
+                  },
+                },
+                '& .MuiInputLabel-root': {
+                  color: 'rgba(255,255,255,0.7)',
+                  '&.Mui-focused': {
+                    color: 'white',
+                  },
+                },
+                '& .MuiOutlinedInput-input': {
+                  color: 'white',
+                },
+              }}
+            />
+
+            <FormControl fullWidth>
+              <InputLabel sx={{
+                color: 'rgba(255,255,255,0.7)',
+                '&.Mui-focused': {
+                  color: 'white',
+                },
+              }}>
+                Relationship
+              </InputLabel>
+              <Select
+                value={emergencyRelationship}
+                onChange={(e) => setEmergencyRelationship(e.target.value)}
+                sx={{
+                  bgcolor: 'rgba(255,255,255,0.1)',
+                  color: 'white',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'rgba(255,255,255,0.3)',
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'rgba(255,255,255,0.5)',
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'white',
+                  },
+                  '& .MuiSelect-icon': {
+                    color: 'rgba(255,255,255,0.7)',
+                  },
+                }}
+              >
+                <MenuItem value="Spouse">Spouse</MenuItem>
+                <MenuItem value="Parent">Parent</MenuItem>
+                <MenuItem value="Child">Child</MenuItem>
+                <MenuItem value="Sibling">Sibling</MenuItem>
+                <MenuItem value="Friend">Friend</MenuItem>
+                <MenuItem value="Other">Other</MenuItem>
+              </Select>
+            </FormControl>
+
+            <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
+              <Button
+                variant="outlined"
+                onClick={() => setShowEmergencyDialog(false)}
+                sx={{
+                  flex: 1,
+                  color: 'white',
+                  borderColor: 'rgba(255,255,255,0.3)',
+                  '&:hover': {
+                    bgcolor: 'rgba(255,255,255,0.1)',
+                    borderColor: 'rgba(255,255,255,0.5)',
+                  }
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="contained"
+                onClick={async () => {
+                  // Validate required fields
+                  if (!emergencyName.trim() || !emergencyPhone.trim() || !emergencyCountry) {
+                    alert('Please fill in all required fields');
+                    return;
+                  }
+
+                  // Check if user is authenticated
+                  if (!user) {
+                    alert('You must be logged in to save emergency contacts');
+                    return;
+                  }
+
+                  try {
+                    // Convert to E164 format for storage
+                    const phoneE164 = parsePhoneNumberFromString(emergencyPhone, emergencyCountry.code as any);
+                    const finalPhone = phoneE164?.isValid() ? phoneE164.number : emergencyPhone;
+
+                    const emergencyContactData = {
+                      name: emergencyName.trim(),
+                      phone: finalPhone,
+                      relationship: emergencyRelationship,
+                      country: emergencyCountry,
+                      province: emergencyProvince.trim() || undefined,
+                    };
+
+                    // Save to backend API
+                    const response = await authAPI.updateEmergencyContact(emergencyContactData);
+
+                    // Update user context with new emergency contact
+                    updateUser({
+                      emergencyContact: response.emergencyContact
+                    });
+
+                    // Close dialog and show success message
+                    setShowEmergencyDialog(false);
+                    alert('Emergency contact updated successfully!');
+
+                  } catch (error: any) {
+                    console.error('Failed to save emergency contact:', error);
+                    console.error('Error details:', error.response?.data || error.message);
+                    
+                    // More specific error messages
+                    if (error.response?.status === 401) {
+                      alert('Authentication required. Please log in again.');
+                    } else if (error.response?.status === 400) {
+                      alert('Invalid data provided. Please check all fields.');
+                    } else if (error.response?.status === 404) {
+                      alert('Service not available. Please try again later.');
+                    } else {
+                      alert('Failed to save emergency contact. Please try again.');
+                    }
+                  }
+                }}
+                startIcon={<Save />}
+                sx={{
+                  flex: 1,
+                  bgcolor: 'rgba(76, 175, 80, 0.9)',
+                  color: 'white',
+                  '&:hover': {
+                    bgcolor: 'rgba(76, 175, 80, 1)',
+                  }
+                }}
+              >
+                Save Contact
+              </Button>
+            </Box>
+          </Box>
+        </DialogContent>
+      </Dialog>
 
       {/* Video Consultation Dialog */}
       <Dialog

@@ -1,23 +1,24 @@
 import axios from 'axios';
 import { Doctor, Appointment, Patient, Service } from '../types';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8082/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true, // Send cookies with requests
 });
 
-// Add request interceptor for authentication
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('auth_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+// Add request interceptor for authentication (removed since we use cookies)
+// api.interceptors.request.use((config) => {
+//   const token = localStorage.getItem('auth_token');
+//   if (token) {
+//     config.headers.Authorization = `Bearer ${token}`;
+//   }
+//   return config;
+// });
 
 // Doctor API
 export const doctorAPI = {
@@ -64,6 +65,8 @@ export const authAPI = {
     api.post('/auth/register', userData).then(res => res.data),
   logout: (): Promise<void> => 
     api.post('/auth/logout').then(res => res.data),
+  updateEmergencyContact: (emergencyContact: any): Promise<{ message: string; emergencyContact: any }> => 
+    api.put('/auth/emergency-contact', emergencyContact).then(res => res.data),
 };
 
 export default api;

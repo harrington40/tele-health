@@ -19,6 +19,13 @@ export interface User {
     name: string;
     phone: string;
     relationship: string;
+    country?: {
+      code: string;
+      name: string;
+      flag: string;
+      callingCode: string;
+    };
+    province?: string;
   };
   medicalHistory?: string[];
   allergies?: string[];
@@ -41,7 +48,7 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
+  login: (email: string, password: string, rememberMe?: boolean) => Promise<User>;
   logout: () => void;
   updateUser: (updates: Partial<User>) => void;
 }
@@ -83,7 +90,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             lastName: user.last_name,
             email: user.email,
             phone: user.phone,
-            userType: user.user_type === 'patient' ? 'client' : user.user_type,
+            userType: user.user_type === 'patient' ? 'client' : user.user_type === 'doctor' ? 'provider' : user.user_type,
             country: user.country,
             profilePicture: '/api/placeholder/150/150',
             dateOfBirth: '',
@@ -103,6 +110,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             lastLoginAt: new Date().toISOString()
           };
 
+          console.log('Loaded user from /me:', user);
+          console.log('Transformed userType:', frontendUser.userType);
           setUser(frontendUser);
         }
       } catch (error) {
@@ -115,7 +124,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     loadUser();
   }, []);
 
-  const login = async (email: string, password: string, rememberMe = false) => {
+  const login = async (email: string, password: string, rememberMe = false): Promise<User> => {
     setIsLoading(true);
     try {
       const response = await fetch('http://localhost:8081/api/auth/login', {
@@ -142,14 +151,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         lastName: user.last_name,
         email: user.email,
         phone: user.phone,
-        userType: user.user_type === 'patient' ? 'client' : user.user_type,
-        profilePicture: '/api/placeholder/150/150',
-        dateOfBirth: '', // Not provided in response
-        gender: '', // Not provided
-        address: '', // Not provided
-        emergencyContact: undefined,
-        medicalHistory: [],
-        allergies: [],
+            userType: user.user_type === 'patient' ? 'client' : user.user_type === 'doctor' ? 'provider' : user.user_type,
+            country: user.country,
         currentMedications: [],
         insuranceInfo: undefined,
         preferences: {
@@ -162,6 +165,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       };
 
       setUser(frontendUser);
+      return frontendUser;
     } catch (error) {
       throw new Error('Login failed');
     } finally {

@@ -56,6 +56,7 @@ Create a `.env` file in the root directory with:
 REACT_APP_API_URL=http://localhost:3001/api
 REACT_APP_STRIPE_PUBLIC_KEY=your_stripe_public_key
 REACT_APP_SOCKET_URL=http://localhost:3001
+REACT_APP_OPENFDA_API_KEY=
 ```
 
 ## Development Commands

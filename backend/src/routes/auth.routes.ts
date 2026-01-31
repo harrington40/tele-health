@@ -286,6 +286,77 @@ router.get('/me', async (req: Request, res: Response): Promise<void> => {
   }
 });
 
+// Update emergency contact
+router.put('/emergency-contact', async (req: Request, res: Response): Promise<void> => {
+  try {
+    // Get token from cookie
+    const token = req.cookies.auth_token;
+    if (!token) {
+      res.status(401).json({ error: 'No token provided' });
+      return;
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret-change-in-production') as any;
+
+    // Check database connection
+    try {
+      db.getConnection();
+    } catch (error) {
+      console.error('Database not connected:', error);
+      res.status(503).json({ error: 'Database service unavailable' });
+      return;
+    }
+
+    const connection = db.getConnection();
+
+    // Get emergency contact data from request body
+    const { name, phone, relationship, country, province } = req.body;
+
+    // Validate required fields
+    if (!name || !phone || !country) {
+      res.status(400).json({ error: 'Name, phone, and country are required' });
+      return;
+    }
+
+    // Prepare emergency contact object
+    const emergencyContact = {
+      name: name.trim(),
+      phone: phone.trim(),
+      relationship: relationship || '',
+      country: {
+        code: country.code,
+        name: country.name,
+        flag: country.flag,
+        callingCode: country.callingCode
+      },
+      province: province ? province.trim() : undefined
+    };
+
+    // Update user with emergency contact
+    const result = await r.table('users')
+      .get(decoded.userId)
+      .update({
+        emergency_contact: emergencyContact,
+        updated_at: new Date()
+      })
+      .run(connection);
+
+    if (result.replaced === 0 && result.unchanged === 0) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    res.json({
+      message: 'Emergency contact updated successfully',
+      emergencyContact
+    });
+
+  } catch (error) {
+    console.error('Update emergency contact error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Logout
 router.post('/logout', async (req: Request, res: Response): Promise<void> => {
   try {

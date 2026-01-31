@@ -1,20 +1,20 @@
 require('dotenv').config();
-const rethinkdbdash = require('rethinkdbdash');
-
-const r = rethinkdbdash({
-  host: process.env.RETHINKDB_HOST || 'rethinkdb.transtechologies.com',
-  port: parseInt(process.env.RETHINKDB_PORT) || 28015,
-  db: process.env.RETHINKDB_DB || 'telehealth_db_db',
-  authKey: process.env.RETHINKDB_AUTH_KEY || ''
-});
+const r = require('rethinkdb');
 
 async function insertSampleDoctor() {
+  let conn;
   try {
-    // Sample Doctor
+    conn = await r.connect({
+      host: process.env.RETHINKDB_HOST || 'rethinkdb.transtechologies.com',
+      port: parseInt(process.env.RETHINKDB_PORT) || 28015,
+      db: process.env.RETHINKDB_DB || 'telehealth_db_db',
+      password: process.env.RETHINKDB_AUTH_KEY || ''
+    });
+    
     const doctor = {
       user_type: 'doctor',
       email: 'dr.johnson@telehealth.com',
-      password_hash: '$2b$10$examplehash', // dummy hash
+      password: '$2a$10$GmFlpyfA9vpdgmj7nJqGdeRWySRaiTsUIplxncJpgbJMrNItipZLS', // hash for 'doctor123'
       first_name: 'Sarah',
       last_name: 'Johnson',
       phone: '+1-555-123-4567',
@@ -56,10 +56,12 @@ async function insertSampleDoctor() {
       updated_at: r.now()
     };
 
-    const result = await r.table('users').insert(doctor).run();
+    const result = await r.table('users').insert(doctor).run(conn);
     console.log('✅ Sample doctor inserted successfully!', result.generated_keys);
   } catch (err) {
     console.error('Error:', err.message);
+  } finally {
+    if (conn) conn.close();
   }
 }
 

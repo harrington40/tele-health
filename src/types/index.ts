@@ -14,6 +14,28 @@ export interface Doctor {
   bio?: string;
   education?: string[];
   experience?: number;
+  // Discount and pricing features
+  discountSettings?: {
+    isEnabled: boolean;
+    discountPercentage: number;
+    discountDescription: string;
+    startDate: string;
+    endDate: string;
+    applicableServices?: string[];
+  };
+  pricingHistory?: PricingActivity[];
+}
+
+export interface PricingActivity {
+  id: string;
+  doctorId: number;
+  action: 'discount_enabled' | 'discount_disabled' | 'discount_updated' | 'price_changed';
+  oldPrice?: number;
+  newPrice?: number;
+  discountPercentage?: number;
+  description: string;
+  timestamp: string;
+  metadata?: any;
 }
 
 export interface Appointment {
@@ -43,6 +65,17 @@ export interface Patient {
   medicalHistory?: string[];
   allergies?: string[];
   medications?: string[];
+}
+
+export interface Medication {
+  id: string;
+  name: string;
+  medicationName?: string;
+  dosage: string;
+  frequency: string;
+  duration: string;
+  startDate: string;
+  isActive: boolean;
 }
 
 export interface Service {
@@ -284,4 +317,145 @@ export interface Prescription {
   instructions?: string;
   refillsRemaining: number;
   isActive: boolean;
+}
+
+// Clinical Decision Support (CDS) Types
+export interface CDSRule {
+  id: string;
+  name: string;
+  description: string;
+  category: 'medication' | 'diagnostic' | 'preventive' | 'monitoring' | 'alert';
+  priority: 'low' | 'medium' | 'high' | 'critical';
+  conditions: CDSCondition[];
+  actions: CDSAction[];
+  evidence?: string;
+  guidelines?: string[];
+  lastUpdated: string;
+  isActive: boolean;
+}
+
+export interface CDSCondition {
+  type: 'patient_age' | 'medication' | 'diagnosis' | 'lab_value' | 'vital_sign' | 'symptom' | 'allergy' | 'pregnancy' | 'comorbidity' | 'gender';
+  operator: 'equals' | 'not_equals' | 'greater_than' | 'less_than' | 'contains' | 'not_contains' | 'between' | 'in' | 'not_in';
+  value: any;
+  unit?: string;
+  timeframe?: string; // e.g., 'last_30_days', 'current'
+}
+
+export interface CDSAction {
+  type: 'recommend_medication' | 'order_lab' | 'schedule_followup' | 'alert_provider' | 'suggest_diagnosis' | 'preventive_care' | 'lifestyle_advice';
+  title: string;
+  description: string;
+  severity: 'info' | 'warning' | 'critical';
+  supportingEvidence?: string;
+  alternatives?: string[];
+  contraindications?: string[];
+}
+
+export interface CDSRecommendation {
+  id: string;
+  ruleId: string;
+  patientId: number;
+  providerId: number;
+  encounterId?: string;
+  title: string;
+  description: string;
+  category: CDSRule['category'];
+  priority: CDSRule['priority'];
+  severity: CDSAction['severity'];
+  supportingEvidence: string;
+  suggestedActions: string[];
+  alternatives?: string[];
+  contraindications?: string[];
+  confidence: number; // 0-1 scale
+  triggeredConditions: CDSCondition[];
+  knowledgeSources: string[];
+  timestamp: string;
+  status: 'pending' | 'acknowledged' | 'accepted' | 'rejected' | 'implemented';
+  providerResponse?: string;
+  implementedDate?: string;
+}
+
+export interface CDSKnowledgeSource {
+  id: string;
+  name: string;
+  type: 'drug_database' | 'lab_reference' | 'clinical_guideline' | 'risk_calculator' | 'evidence_base';
+  description: string;
+  source: string; // URL or reference
+  lastUpdated: string;
+  version: string;
+  credibility: 'high' | 'medium' | 'low';
+  categories: string[];
+}
+
+export interface CDSEncounter {
+  id: string;
+  patientId: number;
+  providerId: number;
+  appointmentId?: number;
+  startTime: string;
+  endTime?: string;
+  chiefComplaint: string;
+  symptoms: string[];
+  vitalSigns: VitalSigns;
+  assessments: string[];
+  diagnoses: string[];
+  medications: Medication[];
+  labsOrdered: LabOrder[];
+  recommendations: CDSRecommendation[];
+  notes: string;
+}
+
+export interface VitalSigns {
+  bloodPressure?: {
+    systolic: number;
+    diastolic: number;
+    timestamp: string;
+  };
+  heartRate?: number;
+  temperature?: number;
+  respiratoryRate?: number;
+  oxygenSaturation?: number;
+  weight?: number;
+  height?: number;
+  bmi?: number;
+  timestamp: string;
+}
+
+export interface LabOrder {
+  id: string;
+  testName: string;
+  testCode: string;
+  category: string;
+  normalRange?: {
+    min: number;
+    max: number;
+    unit: string;
+  };
+  result?: number;
+  resultText?: string;
+  status: 'ordered' | 'collected' | 'pending' | 'completed' | 'cancelled';
+  orderedDate: string;
+  collectedDate?: string;
+  resultDate?: string;
+  notes?: string;
+}
+
+export interface CDSContext {
+  patient: Patient;
+  encounter?: CDSEncounter;
+  vitalSigns?: VitalSigns;
+  recentLabs?: LabOrder[];
+  currentMedications?: Medication[];
+  allergies: string[];
+  diagnoses: string[];
+  age: number;
+  gender: 'male' | 'female' | 'other';
+  pregnancyStatus?: boolean;
+  smokingStatus?: 'never' | 'former' | 'current';
+  comorbidities: string[];
+  chiefComplaint?: string;
+  symptoms: string[];
+  providerSpecialty?: string;
+  encounterType: 'office_visit' | 'telehealth' | 'urgent_care' | 'emergency';
 }

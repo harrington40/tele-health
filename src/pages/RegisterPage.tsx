@@ -553,7 +553,7 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister }) => {
           lastName: data.user.last_name,
           email: data.user.email,
           phone: data.user.phone,
-          userType: data.user.user_type === 'patient' ? 'client' : data.user.user_type,
+          userType: data.user.user_type === 'patient' ? 'client' : data.user.user_type === 'doctor' ? 'provider' : data.user.user_type,
           country: finalFormData.country ? {
             code: finalFormData.country.code,
             name: finalFormData.country.name
