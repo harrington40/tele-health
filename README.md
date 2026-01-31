@@ -43,14 +43,23 @@ cd telehealth-portal
 2. Install dependencies:
 ```bash
 npm install
+cd backend && npm install && cd ..
 ```
 
-3. Start the development server:
+3. Start the application:
 ```bash
+# Quick start script (starts both frontend and backend)
+./start-dev.sh
+
+# Or manually:
+# Terminal 1 - Backend
+cd backend && npm run build && npm start
+
+# Terminal 2 - Frontend  
 npm start
 ```
 
-The app will open at [http://localhost:3000](http://localhost:3000)
+The app will open at [http://localhost:3000](http://localhost:3000) with backend API at [http://localhost:8081/api](http://localhost:8081/api)
 
 ### Mobile Development
 
