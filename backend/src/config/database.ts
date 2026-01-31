@@ -11,7 +11,6 @@ class DatabaseConnection {
         host: config.rethinkdb.host,
         port: config.rethinkdb.port,
         db: config.rethinkdb.db,
-        user: config.rethinkdb.user || 'admin',
         password: config.rethinkdb.authKey || ''
       });
 
