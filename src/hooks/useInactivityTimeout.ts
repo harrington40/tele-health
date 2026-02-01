@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
 interface UseInactivityTimeoutOptions {
-  timeout?: number; // in milliseconds, default 15 minutes
+  timeout?: number; // in milliseconds, default 6 minutes
   promptBefore?: number; // prompt user before logout, in milliseconds
   onPrompt?: () => void;
   onTimeout?: () => void;
@@ -10,8 +10,8 @@ interface UseInactivityTimeoutOptions {
 
 export const useInactivityTimeout = (options: UseInactivityTimeoutOptions = {}) => {
   const {
-    timeout = 15 * 60 * 1000, // 15 minutes
-    promptBefore = 2 * 60 * 1000, // 2 minutes before timeout
+    timeout = 6 * 60 * 1000, // 6 minutes (reduced from 15 minutes)
+    promptBefore = 1 * 60 * 1000, // 1 minute before timeout (reduced from 2 minutes)
     onPrompt,
     onTimeout
   } = options;

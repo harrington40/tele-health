@@ -24,14 +24,14 @@ const theme = createTheme({
 const AppContent: React.FC = () => {
   const { isAuthenticated } = useAuth();
   const [showWarning, setShowWarning] = React.useState(false);
-  const [timeRemaining, setTimeRemaining] = React.useState(120); // 2 minutes
+  const [timeRemaining, setTimeRemaining] = React.useState(60); // 1 minute
 
   const { extendSession, logoutNow, timeUntilTimeout } = useInactivityTimeout({
-    timeout: 15 * 60 * 1000, // 15 minutes
-    promptBefore: 2 * 60 * 1000, // 2 minutes before timeout
+    timeout: 6 * 60 * 1000, // 6 minutes (reduced from 15 minutes)
+    promptBefore: 1 * 60 * 1000, // 1 minute before timeout (reduced from 2 minutes)
     onPrompt: () => {
       if (isAuthenticated) {
-        setTimeRemaining(120); // 2 minutes
+        setTimeRemaining(60); // 1 minute
         setShowWarning(true);
       }
     },
@@ -78,7 +78,7 @@ const AppContent: React.FC = () => {
         onExtend={handleExtendSession}
         onLogout={handleLogoutNow}
         timeRemaining={timeRemaining}
-        totalTime={120}
+        totalTime={60}
       />
     </>
   );
