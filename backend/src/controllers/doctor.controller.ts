@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { doctors } from '../models/data';
-import { Doctor } from '../models/types';
+import { Doctor, PricingActivity } from '../models/types';
 
 export class DoctorController {
   static getAllDoctors(req: Request, res: Response): void {
@@ -86,10 +86,10 @@ export class DoctorController {
       doctors[doctorIndex].discountSettings = discountSettings;
 
       // Add to pricing history
-      const activity = {
+      const activity: PricingActivity = {
         id: Date.now().toString(),
         doctorId: parseInt(id),
-        action: discountSettings.isEnabled ? 'discount_enabled' : 'discount_disabled',
+        action: discountSettings.isEnabled ? 'discount_enabled' as const : 'discount_disabled' as const,
         description: discountSettings.isEnabled 
           ? `Enabled ${discountSettings.discountPercentage}% discount`
           : 'Disabled active discount',

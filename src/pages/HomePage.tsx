@@ -172,6 +172,52 @@ const HomePage: React.FC = () => {
         </Grid>
       </Container>
 
+      {/* Membership Options */}
+      <Box sx={{ backgroundColor: 'primary.light', py: 6 }}>
+        <Container maxWidth="lg">
+          <Typography variant="h3" component="h2" textAlign="center" gutterBottom sx={{ color: 'white' }}>
+            Choose Your Care Option
+          </Typography>
+          <Grid container spacing={4} sx={{ mt: 4 }}>
+            <Grid item xs={12} md={6}>
+              <Card sx={{ p: 3, textAlign: 'center', height: '100%' }}>
+                <Typography variant="h5" gutterBottom>
+                  Membership Plan
+                </Typography>
+                <Typography variant="h4" color="primary.main" fontWeight="bold">
+                  From $37/visit
+                </Typography>
+                <Typography variant="body2" sx={{ mb: 2 }}>
+                  $10 off all visits, free lab for annual members, dedicated care team
+                </Typography>
+                <Typography variant="body2" sx={{ mb: 3 }}>
+                  Only $8.25/month
+                </Typography>
+                <Button variant="contained" size="large" onClick={() => navigate('/membership')}>
+                  Learn More
+                </Button>
+              </Card>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <Card sx={{ p: 3, textAlign: 'center', height: '100%' }}>
+                <Typography variant="h5" gutterBottom>
+                  One-Time Visit
+                </Typography>
+                <Typography variant="h4" color="primary.main" fontWeight="bold">
+                  From $47/visit
+                </Typography>
+                <Typography variant="body2" sx={{ mb: 2 }}>
+                  Telehealth or in-person visit with a provider, prescription or lab referral if needed
+                </Typography>
+                <Button variant="contained" size="large" onClick={() => navigate('/booking')}>
+                  Book Now
+                </Button>
+              </Card>
+            </Grid>
+          </Grid>
+        </Container>
+      </Box>
+
       {/* Statistics Section */}
       <Box sx={{ backgroundColor: 'grey.50', py: 6 }}>
         <Container maxWidth="lg">
@@ -212,6 +258,48 @@ const HomePage: React.FC = () => {
           </Grid>
         </Container>
       </Box>
+
+      {/* Testimonials Section */}
+      <Container maxWidth="lg" sx={{ py: 6 }}>
+        <Typography variant="h3" component="h2" textAlign="center" gutterBottom>
+          What Our Patients Say
+        </Typography>
+        <Grid container spacing={4}>
+          <Grid item xs={12} md={4}>
+            <Card sx={{ p: 3, textAlign: 'center' }}>
+              <Rating value={5} readOnly />
+              <Typography variant="body1" sx={{ mt: 2, mb: 2 }}>
+                "I have a busy schedule and high deductible insurance, the affordability of this service is amazing and my doctor was great! I'll book again and again."
+              </Typography>
+              <Typography variant="subtitle2" color="text.secondary">
+                Andrea, Kansas City, KS
+              </Typography>
+            </Card>
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <Card sx={{ p: 3, textAlign: 'center' }}>
+              <Rating value={5} readOnly />
+              <Typography variant="body1" sx={{ mt: 2, mb: 2 }}>
+                "Sesame made getting healthcare so easy and affordable. The doctor was professional and the video call was seamless."
+              </Typography>
+              <Typography variant="subtitle2" color="text.secondary">
+                Michael, New York, NY
+              </Typography>
+            </Card>
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <Card sx={{ p: 3, textAlign: 'center' }}>
+              <Rating value={5} readOnly />
+              <Typography variant="body1" sx={{ mt: 2, mb: 2 }}>
+                "Finally, healthcare that fits my budget! The mental health support has been life-changing."
+              </Typography>
+              <Typography variant="subtitle2" color="text.secondary">
+                Sarah, Los Angeles, CA
+              </Typography>
+            </Card>
+          </Grid>
+        </Grid>
+      </Container>
 
       {/* Call to Action */}
       <Container maxWidth="md" sx={{ py: 6, textAlign: 'center' }}>

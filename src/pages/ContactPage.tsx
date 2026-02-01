@@ -142,7 +142,8 @@ const ContactPage: React.FC = () => {
       specialties: ['Video calls', 'App issues', 'Account setup'],
       avatar: '/api/placeholder/64/64',
       languages: ['English', 'Spanish'],
-      rating: 4.9
+      rating: 4.9,
+      status: 'online'
     },
     {
       name: 'Michael Chen',
@@ -150,7 +151,8 @@ const ContactPage: React.FC = () => {
       specialties: ['Medical records', 'Prescriptions', 'Privacy'],
       avatar: '/api/placeholder/64/64',
       languages: ['English', 'Mandarin'],
-      rating: 4.8
+      rating: 4.8,
+      status: 'online'
     },
     {
       name: 'Emily Rodriguez',
@@ -158,7 +160,8 @@ const ContactPage: React.FC = () => {
       specialties: ['Appointments', 'Billing', 'General help'],
       avatar: '/api/placeholder/64/64',
       languages: ['English', 'Spanish', 'French'],
-      rating: 4.9
+      rating: 4.9,
+      status: 'break'
     }
   ];
 
@@ -185,6 +188,13 @@ const ContactPage: React.FC = () => {
         urgency: 'normal'
       });
     }, 3000);
+  };
+
+  const handleSpecialtyClick = (specialty: string, memberName: string) => {
+    // Handle specialty click - could open a modal, filter, or navigate
+    console.log(`Clicked ${specialty} for ${memberName}`);
+    // For now, just show an alert
+    alert(`Specialty: ${specialty}\nExpert: ${memberName}`);
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -511,12 +521,47 @@ const ContactPage: React.FC = () => {
         <Grid container spacing={3}>
           {supportTeam.map((member, index) => (
             <Grid item xs={12} md={4} key={index}>
-              <Card sx={{ height: '100%', textAlign: 'center' }}>
+              <Card 
+                sx={{ 
+                  height: '100%', 
+                  textAlign: 'center',
+                  transition: 'all 0.3s ease-in-out',
+                  cursor: 'pointer',
+                  border: `2px solid ${member.status === 'online' ? '#4CAF50' : member.status === 'break' ? '#FF9800' : '#F44336'}`,
+                  boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
+                  '&:hover': {
+                    transform: 'translateY(-8px)',
+                    boxShadow: '0 12px 24px rgba(0,0,0,0.15)',
+                    borderColor: member.status === 'online' ? '#2E7D32' : member.status === 'break' ? '#F57C00' : '#D32F2F'
+                  }
+                }}
+              >
                 <CardContent sx={{ p: 3 }}>
-                  <Avatar
-                    src={member.avatar}
-                    sx={{ width: 80, height: 80, mx: 'auto', mb: 2 }}
-                  />
+                  <Box sx={{ position: 'relative', mb: 2 }}>
+                    <Avatar
+                      src={member.avatar}
+                      sx={{ 
+                        width: 80, 
+                        height: 80, 
+                        mx: 'auto',
+                        border: `3px solid ${member.status === 'online' ? '#4CAF50' : member.status === 'break' ? '#FF9800' : '#F44336'}`
+                      }}
+                    />
+                    <Box
+                      sx={{
+                        position: 'absolute',
+                        top: 0,
+                        right: '50%',
+                        transform: 'translateX(50%)',
+                        width: 16,
+                        height: 16,
+                        borderRadius: '50%',
+                        bgcolor: member.status === 'online' ? '#4CAF50' : member.status === 'break' ? '#FF9800' : '#F44336',
+                        border: '2px solid white',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                      }}
+                    />
+                  </Box>
                   <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1 }}>
                     {member.name}
                   </Typography>
@@ -528,9 +573,37 @@ const ContactPage: React.FC = () => {
                     <Typography variant="caption" color="text.secondary" gutterBottom display="block">
                       Specialties:
                     </Typography>
-                    <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', justifyContent: 'center' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
                       {member.specialties.map((specialty, idx) => (
-                        <Chip key={idx} label={specialty} size="small" variant="outlined" />
+                        <React.Fragment key={idx}>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              cursor: 'pointer',
+                              color: 'primary.main',
+                              fontWeight: 'medium',
+                              '&:hover': {
+                                color: 'primary.dark',
+                                textDecoration: 'underline'
+                              },
+                              transition: 'color 0.2s ease-in-out'
+                            }}
+                            onClick={() => handleSpecialtyClick(specialty, member.name)}
+                          >
+                            {specialty}
+                          </Typography>
+                          {idx < member.specialties.length - 1 && (
+                            <Divider 
+                              orientation="vertical" 
+                              flexItem 
+                              sx={{ 
+                                height: 16, 
+                                bgcolor: 'text.secondary',
+                                opacity: 0.3
+                              }} 
+                            />
+                          )}
+                        </React.Fragment>
                       ))}
                     </Box>
                   </Box>

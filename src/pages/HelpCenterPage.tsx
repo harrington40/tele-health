@@ -36,7 +36,11 @@ import {
   Skeleton,
   Rating,
   CircularProgress,
-  Backdrop
+  Backdrop,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions
 } from '@mui/material';
 import {
   Search,
@@ -84,7 +88,8 @@ import {
   CheckCircle,
   Error,
   Info,
-  Warning
+  Warning,
+  Close
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
@@ -152,6 +157,14 @@ const HelpCenterPage: React.FC = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [showRecommendations, setShowRecommendations] = useState(true);
+  
+  // New state for article modal and smart features
+  const [selectedArticle, setSelectedArticle] = useState<any>(null);
+  const [articleModalOpen, setArticleModalOpen] = useState(false);
+  const [recentlyViewed, setRecentlyViewed] = useState<any[]>([]);
+  const [readingProgress, setReadingProgress] = useState<{[key: string]: number}>({});
+  const [articleRatings, setArticleRatings] = useState<{[key: string]: number}>({});
+  const [relatedArticles, setRelatedArticles] = useState<any[]>([]);
 
   // Enhanced categories with AI-driven insights
   const categories = [
@@ -218,6 +231,14 @@ const HelpCenterPage: React.FC = () => {
       count: 9,
       color: '#3F51B5',
       description: 'Data protection & HIPAA'
+    },
+    {
+      id: 'ai-features',
+      name: 'AI-Powered Features',
+      icon: <SmartToy />,
+      count: 16,
+      color: '#FF5722',
+      description: 'AI health assistants & smart tools'
     }
   ];
 
@@ -303,6 +324,86 @@ const HelpCenterPage: React.FC = () => {
       lastUpdated: '2024-01-08',
       author: 'Security Team',
       featured: true
+    },
+    {
+      id: '7',
+      title: 'AI-Powered Health Insights: Understanding Your Data',
+      category: 'ai-features',
+      views: 4231,
+      helpful: 412,
+      readTime: 15,
+      difficulty: 'intermediate',
+      rating: 4.8,
+      tags: ['AI', 'insights', 'data', 'analytics'],
+      lastUpdated: '2024-01-25',
+      author: 'AI Research Team',
+      featured: true
+    },
+    {
+      id: '8',
+      title: 'Smart Medication Management with AI',
+      category: 'ai-features',
+      views: 3876,
+      helpful: 378,
+      readTime: 10,
+      difficulty: 'beginner',
+      rating: 4.7,
+      tags: ['AI', 'medication', 'management', 'reminders'],
+      lastUpdated: '2024-01-22',
+      author: 'Pharmacy AI Team'
+    },
+    {
+      id: '9',
+      title: 'Mental Health AI: Your 24/7 Wellness Companion',
+      category: 'ai-features',
+      views: 3456,
+      helpful: 334,
+      readTime: 12,
+      difficulty: 'intermediate',
+      rating: 4.9,
+      tags: ['AI', 'mental-health', 'wellness', 'support'],
+      lastUpdated: '2024-01-20',
+      author: 'Mental Health Team',
+      featured: true
+    },
+    {
+      id: '10',
+      title: 'AI Symptom Analysis: When to Seek Help',
+      category: 'ai-features',
+      views: 2987,
+      helpful: 289,
+      readTime: 8,
+      difficulty: 'beginner',
+      rating: 4.6,
+      tags: ['AI', 'symptoms', 'analysis', 'emergency'],
+      lastUpdated: '2024-01-18',
+      author: 'Medical AI Team'
+    },
+    {
+      id: '11',
+      title: 'Personalized Health Recommendations Powered by AI',
+      category: 'ai-features',
+      views: 2654,
+      helpful: 256,
+      readTime: 11,
+      difficulty: 'intermediate',
+      rating: 4.7,
+      tags: ['AI', 'personalization', 'recommendations', 'lifestyle'],
+      lastUpdated: '2024-01-15',
+      author: 'Health AI Team'
+    },
+    {
+      id: '12',
+      title: 'AI-Enhanced Video Consultations: Best Practices',
+      category: 'ai-features',
+      views: 2345,
+      helpful: 223,
+      readTime: 9,
+      difficulty: 'beginner',
+      rating: 4.5,
+      tags: ['AI', 'video', 'consultations', 'quality'],
+      lastUpdated: '2024-01-12',
+      author: 'Telemedicine Team'
     }
   ];
 
@@ -387,6 +488,86 @@ const HelpCenterPage: React.FC = () => {
       tags: ['performance', 'speed', 'optimization'],
       helpful: 87,
       views: 234
+    },
+    {
+      id: '9',
+      question: 'How does AI-powered symptom analysis work?',
+      answer: 'Our AI analyzes your described symptoms, medical history, and vital signs to provide preliminary insights. It cross-references with millions of medical cases to suggest possible conditions and urgency levels, helping you decide when to seek immediate care.',
+      category: 'ai-features',
+      priority: 'high',
+      tags: ['AI', 'symptoms', 'diagnosis', 'analysis'],
+      helpful: 312,
+      views: 1456
+    },
+    {
+      id: '10',
+      question: 'Can AI help with medication reminders and interactions?',
+      answer: 'Yes! Our AI medication assistant tracks your prescriptions, sends smart reminders based on your schedule, and checks for potential drug interactions. It learns your habits to optimize reminder timing and provides refill alerts before you run out.',
+      category: 'ai-features',
+      priority: 'high',
+      tags: ['AI', 'medication', 'reminders', 'interactions'],
+      helpful: 267,
+      views: 1234
+    },
+    {
+      id: '11',
+      question: 'How does the AI health assistant provide personalized recommendations?',
+      answer: 'The AI analyzes your health data, lifestyle patterns, and medical history to offer tailored advice. It considers your age, conditions, medications, and goals to provide relevant health tips, exercise suggestions, and preventive care recommendations.',
+      category: 'ai-features',
+      priority: 'medium',
+      tags: ['AI', 'personalization', 'recommendations', 'health'],
+      helpful: 198,
+      views: 987
+    },
+    {
+      id: '12',
+      question: 'What AI features help with appointment scheduling?',
+      answer: 'Our AI scheduling assistant considers your preferences, medical urgency, doctor availability, travel time, and past appointment patterns. It suggests optimal times, handles rescheduling automatically, and even predicts when you might need follow-up appointments.',
+      category: 'ai-features',
+      priority: 'medium',
+      tags: ['AI', 'scheduling', 'appointments', 'optimization'],
+      helpful: 234,
+      views: 876
+    },
+    {
+      id: '13',
+      question: 'How does AI enhance video consultation quality?',
+      answer: 'AI-powered video enhancement improves lighting, reduces background noise, and optimizes bandwidth. It also provides real-time language translation, automatic note-taking during consultations, and quality monitoring to ensure clear communication.',
+      category: 'ai-features',
+      priority: 'medium',
+      tags: ['AI', 'video', 'consultation', 'quality'],
+      helpful: 189,
+      views: 765
+    },
+    {
+      id: '14',
+      question: 'Can AI help with mental health support?',
+      answer: 'Our AI mental health assistant offers 24/7 support with mood tracking, stress management techniques, mindfulness exercises, and crisis detection. It can suggest professional help when needed and track your mental wellness journey over time.',
+      category: 'ai-features',
+      priority: 'high',
+      tags: ['AI', 'mental-health', 'support', 'wellness'],
+      helpful: 345,
+      views: 1567
+    },
+    {
+      id: '15',
+      question: 'How does AI protect patient privacy and security?',
+      answer: 'AI continuously monitors for security threats, detects unusual access patterns, and ensures HIPAA compliance. It uses advanced encryption, biometric verification, and anomaly detection to protect your sensitive health information.',
+      category: 'ai-features',
+      priority: 'high',
+      tags: ['AI', 'privacy', 'security', 'HIPAA'],
+      helpful: 278,
+      views: 1123
+    },
+    {
+      id: '16',
+      question: 'What AI tools help with health record management?',
+      answer: 'AI organizes your medical records, extracts key information from documents, flags important trends in your health data, and creates easy-to-understand summaries. It can also predict potential health risks based on your medical history.',
+      category: 'ai-features',
+      priority: 'medium',
+      tags: ['AI', 'records', 'management', 'analysis'],
+      helpful: 156,
+      views: 678
     }
   ];
 
@@ -416,6 +597,14 @@ const HelpCenterPage: React.FC = () => {
       color: 'secondary'
     },
     {
+      title: 'AI Symptom Checker',
+      description: 'Analyze symptoms with AI',
+      icon: <SmartToy />,
+      action: () => navigate('/symptom-checker'),
+      color: 'info',
+      featured: true
+    },
+    {
       title: 'WhatsApp Support',
       description: 'Quick chat support',
       icon: <WhatsApp />,
@@ -423,11 +612,25 @@ const HelpCenterPage: React.FC = () => {
       color: 'success'
     },
     {
+      title: 'AI Medication Assistant',
+      description: 'Smart medication management',
+      icon: <MedicalServices />,
+      action: () => navigate('/medication-assistant'),
+      color: 'warning'
+    },
+    {
       title: 'Schedule Callback',
       description: 'Book a call with our team',
       icon: <Schedule />,
       action: () => navigate('/schedule-callback'),
       color: 'info'
+    },
+    {
+      title: 'Mental Health AI',
+      description: '24/7 mental wellness support',
+      icon: <Psychology />,
+      action: () => navigate('/mental-health-ai'),
+      color: 'secondary'
     },
     {
       title: 'Community Forum',
@@ -496,6 +699,84 @@ const HelpCenterPage: React.FC = () => {
     return generatePersonalizedRecommendations([], searchQuery);
   }, [searchQuery, showRecommendations]);
 
+  // Smart article click handler with AI-powered features
+  const handleArticleClick = (article: any) => {
+    // Update view count
+    const updatedArticle = { ...article, views: article.views + 1 };
+    
+    // Add to recently viewed (keep only last 5)
+    setRecentlyViewed(prev => {
+      const filtered = prev.filter(item => item.id !== article.id);
+      return [updatedArticle, ...filtered].slice(0, 5);
+    });
+    
+    // Generate related articles based on tags and category
+    const related = popularArticles
+      .filter(a => a.id !== article.id)
+      .filter(a => 
+        a.category === article.category || 
+        a.tags.some((tag: string) => article.tags.includes(tag))
+      )
+      .sort((a, b) => {
+        // Smart scoring: same category + shared tags
+        const aScore = (a.category === article.category ? 2 : 0) + 
+                      a.tags.filter((tag: string) => article.tags.includes(tag)).length;
+        const bScore = (b.category === article.category ? 2 : 0) + 
+                      b.tags.filter((tag: string) => article.tags.includes(tag)).length;
+        return bScore - aScore;
+      })
+      .slice(0, 3);
+    
+    setRelatedArticles(related);
+    setSelectedArticle(updatedArticle);
+    setArticleModalOpen(true);
+    
+    // Simulate reading progress tracking
+    setReadingProgress(prev => ({ ...prev, [article.id]: 0 }));
+  };
+
+  // Smart FAQ interaction handler
+  const handleFAQInteraction = (faqId: string, action: 'expand' | 'helpful' | 'not-helpful') => {
+    if (action === 'expand') {
+      setExpandedFAQ(expandedFAQ === faqId ? false : faqId);
+    } else {
+      setUserFeedback(prev => ({ ...prev, [faqId]: action }));
+      
+      // AI-powered feedback analysis (simulate)
+      if (action === 'helpful') {
+        // Could send to analytics or improve recommendations
+        console.log(`FAQ ${faqId} marked as helpful - improving recommendations`);
+      }
+    }
+  };
+
+  // Enhanced bookmarking with smart suggestions
+  const toggleBookmark = (itemId: string) => {
+    setBookmarkedItems(prev => {
+      const newBookmarks = new Set(prev);
+      if (newBookmarks.has(itemId)) {
+        newBookmarks.delete(itemId);
+      } else {
+        newBookmarks.add(itemId);
+        
+        // Smart suggestion: when bookmarking, suggest related items
+        const item = [...popularArticles, ...faqs].find(i => i.id === itemId);
+        if (item && 'tags' in item) {
+          const related = popularArticles
+            .filter(a => !newBookmarks.has(a.id))
+            .filter(a => a.tags.some((tag: string) => item.tags.includes(tag)))
+            .slice(0, 2);
+          
+          if (related.length > 0) {
+            // Could show a toast notification with suggestions
+            console.log('Smart suggestion: You might also like:', related.map(r => r.title));
+          }
+        }
+      }
+      return newBookmarks;
+    });
+  };
+
   // Handle search with debouncing
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -514,20 +795,247 @@ const HelpCenterPage: React.FC = () => {
     // In a real app, this would send feedback to analytics
   };
 
-  const toggleBookmark = (itemId: string) => {
-    setBookmarkedItems(prev => {
-      const newBookmarks = new Set(prev);
-      if (newBookmarks.has(itemId)) {
-        newBookmarks.delete(itemId);
-      } else {
-        newBookmarks.add(itemId);
-      }
-      return newBookmarks;
-    });
-  };
-
   return (
     <Box sx={{ minHeight: '100vh', background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)' }}>
+      
+      {/* Article Detail Modal with Smart Features */}
+      <Dialog
+        open={articleModalOpen}
+        onClose={() => setArticleModalOpen(false)}
+        maxWidth="md"
+        fullWidth
+        sx={{
+          '& .MuiDialog-paper': {
+            borderRadius: 3,
+            overflow: 'hidden'
+          }
+        }}
+      >
+        {selectedArticle && (
+          <>
+            <DialogTitle
+              sx={{
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                color: 'white',
+                p: 3,
+                position: 'relative'
+              }}
+            >
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <Box sx={{ flex: 1 }}>
+                  <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
+                    {selectedArticle.title}
+                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Avatar sx={{ width: 24, height: 24, bgcolor: 'rgba(255,255,255,0.2)' }}>
+                        <Article sx={{ fontSize: 14 }} />
+                      </Avatar>
+                      <Typography variant="body2">
+                        {selectedArticle.author}
+                      </Typography>
+                    </Box>
+                    <Typography variant="body2" sx={{ opacity: 0.8 }}>
+                      Updated {selectedArticle.lastUpdated}
+                    </Typography>
+                  </Box>
+                </Box>
+                <IconButton
+                  onClick={() => setArticleModalOpen(false)}
+                  sx={{ color: 'white', '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' } }}
+                >
+                  <Close />
+                </IconButton>
+              </Box>
+            </DialogTitle>
+            
+            <DialogContent sx={{ p: 0 }}>
+              <Box sx={{ p: 3 }}>
+                {/* Article Stats */}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 3, flexWrap: 'wrap' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Visibility sx={{ color: 'text.secondary', fontSize: 18 }} />
+                    <Typography variant="body2" color="text.secondary">
+                      {selectedArticle.views.toLocaleString()} views
+                    </Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <AccessTime sx={{ color: 'text.secondary', fontSize: 18 }} />
+                    <Typography variant="body2" color="text.secondary">
+                      {selectedArticle.readTime} min read
+                    </Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Star sx={{ color: '#FFD700', fontSize: 18 }} />
+                    <Typography variant="body2" color="text.secondary">
+                      {selectedArticle.rating}/5.0
+                    </Typography>
+                  </Box>
+                  <Chip
+                    label={selectedArticle.difficulty}
+                    size="small"
+                    color={
+                      selectedArticle.difficulty === 'beginner' ? 'success' :
+                      selectedArticle.difficulty === 'intermediate' ? 'warning' : 'error'
+                    }
+                  />
+                </Box>
+
+                {/* Tags */}
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 3 }}>
+                  {selectedArticle.tags.map((tag: string) => (
+                    <Chip
+                      key={tag}
+                      label={tag}
+                      size="small"
+                      variant="outlined"
+                      sx={{ 
+                        borderColor: '#667eea',
+                        color: '#667eea',
+                        '&:hover': { bgcolor: 'rgba(102, 126, 234, 0.1)' }
+                      }}
+                    />
+                  ))}
+                </Box>
+
+                {/* Article Content */}
+                <Typography variant="body1" sx={{ lineHeight: 1.8, mb: 4, fontSize: '1.1rem' }}>
+                  {selectedArticle.content || `This comprehensive guide covers ${selectedArticle.title.toLowerCase()}. 
+                  Our AI-powered system provides detailed insights and step-by-step instructions to help you navigate 
+                  the telehealth platform effectively. This article includes practical examples, troubleshooting tips, 
+                  and best practices based on user feedback and expert recommendations.`}
+                </Typography>
+
+                {/* Reading Progress */}
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    Reading Progress
+                  </Typography>
+                  <LinearProgress
+                    variant="determinate"
+                    value={readingProgress[selectedArticle.id] || 0}
+                    sx={{
+                      height: 8,
+                      borderRadius: 4,
+                      bgcolor: 'rgba(102, 126, 234, 0.1)',
+                      '& .MuiLinearProgress-bar': {
+                        borderRadius: 4,
+                        background: 'linear-gradient(45deg, #667eea 30%, #764ba2 90%)'
+                      }
+                    }}
+                  />
+                </Box>
+
+                {/* Interactive Rating */}
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                    Rate this article
+                  </Typography>
+                  <Rating
+                    value={articleRatings[selectedArticle.id] || selectedArticle.rating}
+                    onChange={(_, newValue) => {
+                      if (newValue) {
+                        setArticleRatings(prev => ({ ...prev, [selectedArticle.id]: newValue }));
+                      }
+                    }}
+                    size="large"
+                    sx={{
+                      '& .MuiRating-iconFilled': {
+                        color: '#FFD700'
+                      }
+                    }}
+                  />
+                </Box>
+              </Box>
+
+              {/* Related Articles */}
+              {relatedArticles.length > 0 && (
+                <Box sx={{ bgcolor: 'grey.50', p: 3, borderTop: '1px solid', borderColor: 'grey.200' }}>
+                  <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, color: '#667eea' }}>
+                    🤖 Related Articles (AI Recommended)
+                  </Typography>
+                  <Grid container spacing={2}>
+                    {relatedArticles.map((article) => (
+                      <Grid item xs={12} sm={4} key={article.id}>
+                        <Card
+                          sx={{
+                            cursor: 'pointer',
+                            transition: 'all 0.3s ease',
+                            '&:hover': {
+                              transform: 'translateY(-2px)',
+                              boxShadow: 4
+                            }
+                          }}
+                          onClick={() => {
+                            setArticleModalOpen(false);
+                            setTimeout(() => handleArticleClick(article), 300);
+                          }}
+                        >
+                          <CardContent sx={{ p: 2 }}>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, fontSize: '0.9rem' }}>
+                              {article.title}
+                            </Typography>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <Rating value={article.rating} readOnly size="small" />
+                              <Typography variant="caption" color="text.secondary">
+                                {article.readTime} min
+                              </Typography>
+                            </Box>
+                          </CardContent>
+                        </Card>
+                      </Grid>
+                    ))}
+                  </Grid>
+                </Box>
+              )}
+            </DialogContent>
+
+            <DialogActions sx={{ p: 3, borderTop: '1px solid', borderColor: 'grey.200' }}>
+              <Box sx={{ display: 'flex', gap: 2, width: '100%', justifyContent: 'space-between' }}>
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <Button
+                    startIcon={<ThumbUp />}
+                    variant="outlined"
+                    size="small"
+                    sx={{ textTransform: 'none' }}
+                  >
+                    Helpful
+                  </Button>
+                  <Button
+                    startIcon={<ThumbDown />}
+                    variant="outlined"
+                    size="small"
+                    sx={{ textTransform: 'none' }}
+                  >
+                    Not Helpful
+                  </Button>
+                </Box>
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <IconButton
+                    onClick={() => toggleBookmark(selectedArticle.id)}
+                    sx={{ 
+                      color: bookmarkedItems.has(selectedArticle.id) ? 'primary.main' : 'text.secondary'
+                    }}
+                  >
+                    {bookmarkedItems.has(selectedArticle.id) ? <Bookmark /> : <BookmarkBorder />}
+                  </IconButton>
+                  <IconButton sx={{ color: 'text.secondary' }}>
+                    <Share />
+                  </IconButton>
+                  <Button
+                    variant="contained"
+                    startIcon={<Download />}
+                    sx={{ textTransform: 'none' }}
+                  >
+                    Download PDF
+                  </Button>
+                </Box>
+              </Box>
+            </DialogActions>
+          </>
+        )}
+      </Dialog>
+
       {/* Hero Section with AI Animation */}
       <Box
         sx={{
@@ -862,6 +1370,7 @@ const HelpCenterPage: React.FC = () => {
                                   boxShadow: 8
                                 }
                               }}
+                              onClick={() => handleArticleClick(article)}
                             >
                               <CardContent sx={{ p: 3 }}>
                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
@@ -941,6 +1450,7 @@ const HelpCenterPage: React.FC = () => {
                               boxShadow: 4
                             }
                           }}
+                          onClick={() => handleArticleClick(article)}
                         >
                           <CardContent sx={{ p: 2 }}>
                             <Typography variant="h6" sx={{ fontWeight: 600, mb: 1, fontSize: '1rem' }}>
@@ -986,7 +1496,7 @@ const HelpCenterPage: React.FC = () => {
                   <Grow in={true} timeout={300 + index * 50} key={faq.id}>
                     <Accordion
                       expanded={expandedFAQ === faq.id}
-                      onChange={(_, expanded) => setExpandedFAQ(expanded ? faq.id : false)}
+                      onChange={(_, expanded) => handleFAQInteraction(faq.id, 'expand')}
                       sx={{
                         mb: 2,
                         borderRadius: 2,
@@ -1049,7 +1559,7 @@ const HelpCenterPage: React.FC = () => {
                           <Box sx={{ display: 'flex', gap: 1 }}>
                             <IconButton
                               size="small"
-                              onClick={() => handleFeedback(faq.id, 'helpful')}
+                              onClick={() => handleFAQInteraction(faq.id, 'helpful')}
                               sx={{
                                 color: userFeedback[faq.id] === 'helpful' ? 'success.main' : 'text.secondary',
                                 '&:hover': { color: 'success.main' }
@@ -1059,7 +1569,7 @@ const HelpCenterPage: React.FC = () => {
                             </IconButton>
                             <IconButton
                               size="small"
-                              onClick={() => handleFeedback(faq.id, 'not-helpful')}
+                              onClick={() => handleFAQInteraction(faq.id, 'not-helpful')}
                               sx={{
                                 color: userFeedback[faq.id] === 'not-helpful' ? 'error.main' : 'text.secondary',
                                 '&:hover': { color: 'error.main' }
