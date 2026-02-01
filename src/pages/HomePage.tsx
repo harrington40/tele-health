@@ -16,6 +16,7 @@ import {
   Schedule,
   LocalPharmacy,
   Psychology,
+  CheckCircle,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
@@ -302,22 +303,129 @@ const HomePage: React.FC = () => {
       </Container>
 
       {/* Call to Action */}
-      <Container maxWidth="md" sx={{ py: 6, textAlign: 'center' }}>
-        <Typography variant="h3" component="h2" gutterBottom>
-          Book the best-priced telehealth appointment today.
-        </Typography>
-        <Typography variant="h6" color="text.secondary" gutterBottom sx={{ mb: 4 }}>
-          Find top-rated doctors available today. Pay less than anywhere else.
-        </Typography>
-        <Button
-          variant="contained"
-          size="large"
-          onClick={() => navigate('/booking')}
-          sx={{ px: 4, py: 2 }}
-        >
-          Find Telehealth Appointment
-        </Button>
-      </Container>
+      <Box
+        sx={{
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          py: 8,
+          position: 'relative',
+          overflow: 'hidden',
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'url("data:image/svg+xml,%3Csvg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="none" fill-rule="evenodd"%3E%3Cg fill="%23ffffff" fill-opacity="0.05"%3E%3Ccircle cx="30" cy="30" r="4"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")',
+            opacity: 0.1,
+          }
+        }}
+      >
+        <Container maxWidth="md" sx={{ textAlign: 'center', position: 'relative', zIndex: 1 }}>
+          <Box
+            sx={{
+              backgroundColor: 'rgba(255, 255, 255, 0.95)',
+              borderRadius: 4,
+              p: 6,
+              boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
+              backdropFilter: 'blur(10px)',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+            }}
+          >
+            <Box sx={{ mb: 3 }}>
+              <Box
+                sx={{
+                  width: 80,
+                  height: 80,
+                  borderRadius: '50%',
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 24px',
+                  boxShadow: '0 8px 24px rgba(102, 126, 234, 0.3)',
+                }}
+              >
+                <Schedule sx={{ fontSize: 40, color: 'white' }} />
+              </Box>
+              <Typography
+                variant="h3"
+                component="h2"
+                gutterBottom
+                sx={{
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                  fontWeight: 'bold',
+                  mb: 2,
+                }}
+              >
+                Book the Best-Priced Telehealth Appointment Today
+              </Typography>
+              <Typography
+                variant="h6"
+                color="text.secondary"
+                gutterBottom
+                sx={{ mb: 4, maxWidth: 600, mx: 'auto', lineHeight: 1.6 }}
+              >
+                Find top-rated doctors available today. Pay less than anywhere else with our transparent pricing and no hidden fees.
+              </Typography>
+            </Box>
+
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', justifyContent: 'center' }}>
+                <Chip
+                  icon={<CheckCircle sx={{ color: 'success.main' }} />}
+                  label="No Insurance Required"
+                  variant="outlined"
+                  sx={{ borderColor: 'success.main', color: 'success.main' }}
+                />
+                <Chip
+                  icon={<CheckCircle sx={{ color: 'success.main' }} />}
+                  label="Same-Day Appointments"
+                  variant="outlined"
+                  sx={{ borderColor: 'success.main', color: 'success.main' }}
+                />
+                <Chip
+                  icon={<CheckCircle sx={{ color: 'success.main' }} />}
+                  label="Licensed Doctors"
+                  variant="outlined"
+                  sx={{ borderColor: 'success.main', color: 'success.main' }}
+                />
+              </Box>
+
+              <Button
+                variant="contained"
+                size="large"
+                onClick={() => navigate('/booking')}
+                sx={{
+                  px: 6,
+                  py: 2,
+                  fontSize: '1.1rem',
+                  fontWeight: 'bold',
+                  borderRadius: 3,
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  boxShadow: '0 8px 24px rgba(102, 126, 234, 0.4)',
+                  '&:hover': {
+                    background: 'linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)',
+                    boxShadow: '0 12px 32px rgba(102, 126, 234, 0.6)',
+                    transform: 'translateY(-2px)',
+                  },
+                  transition: 'all 0.3s ease',
+                }}
+                startIcon={<VideoCall />}
+              >
+                Find Telehealth Appointment
+              </Button>
+
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                ✓ Free consultation • ✓ Secure & HIPAA compliant • ✓ 24/7 support
+              </Typography>
+            </Box>
+          </Box>
+        </Container>
+      </Box>
     </Box>
   );
 };
