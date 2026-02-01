@@ -1,6 +1,6 @@
 {
   "name": "telehealth-portal",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A comprehensive telehealth portal similar to Sesame Care",
   "main": "index.js",
   "scripts": {
