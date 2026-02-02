@@ -4,6 +4,19 @@ import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import authRoutes from './routes/auth.routes';
 import db from './config/database';
+import { securityHeaders, apiRateLimit } from './middleware/security.middleware';
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  console.error(error.stack);
+  // Don't exit, just log the error
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  // Don't exit, just log the error
+});
 
 console.log('Starting backend server...');
 dotenv.config();
@@ -12,16 +25,26 @@ console.log('Dotenv loaded');
 const app = express();
 console.log('Express app created');
 
-// Middleware
+// Security middleware (must be first)
+app.use(securityHeaders);
+console.log('Security headers middleware added');
+
+// CORS configuration
 app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:3000',
   credentials: true
 }));
 console.log('CORS middleware added');
+
+// Rate limiting
+app.use('/api/', apiRateLimit);
+console.log('API rate limiting added');
+
+// Other middleware
 app.use(cookieParser());
 console.log('Cookie parser added');
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '10mb' })); // Limit payload size
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 console.log('JSON and URL encoded middleware added');
 
 // Routes

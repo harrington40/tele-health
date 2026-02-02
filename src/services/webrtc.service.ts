@@ -1,4 +1,4 @@
-import { VideoSession, VideoParticipant, Message } from '../types';
+import { VideoParticipant, Message } from '../types';
 
 export interface WebRTCConfig {
   iceServers: RTCIceServer[];

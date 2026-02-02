@@ -51,6 +51,10 @@ const AppContent: React.FC = () => {
     logoutNow();
   };
 
+  const handleDismissWarning = () => {
+    setShowWarning(false);
+  };
+
   // Update countdown every second when warning is shown
   React.useEffect(() => {
     if (!showWarning) return;
@@ -77,6 +81,7 @@ const AppContent: React.FC = () => {
         open={showWarning}
         onExtend={handleExtendSession}
         onLogout={handleLogoutNow}
+        onDismiss={handleDismissWarning}
         timeRemaining={timeRemaining}
         totalTime={60}
       />

@@ -16,6 +16,7 @@ interface InactivityWarningDialogProps {
   open: boolean;
   onExtend: () => void;
   onLogout: () => void;
+  onDismiss?: () => void; // Optional dismiss handler
   timeRemaining: number; // in seconds
   totalTime: number; // in seconds
 }
@@ -24,6 +25,7 @@ const InactivityWarningDialog: React.FC<InactivityWarningDialogProps> = ({
   open,
   onExtend,
   onLogout,
+  onDismiss,
   timeRemaining,
   totalTime,
 }) => {
@@ -110,6 +112,15 @@ const InactivityWarningDialog: React.FC<InactivityWarningDialogProps> = ({
         >
           Logout Now
         </Button>
+        {onDismiss && (
+          <Button
+            onClick={onDismiss}
+            color="inherit"
+            variant="text"
+          >
+            Dismiss
+          </Button>
+        )}
         <Button
           onClick={onExtend}
           color="primary"

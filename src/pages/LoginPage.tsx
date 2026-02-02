@@ -18,6 +18,7 @@ import {
   FormControlLabel,
   Checkbox,
   CircularProgress,
+  LinearProgress,
 } from '@mui/material';
 import {
   Visibility,
@@ -63,6 +64,8 @@ const LoginPage: React.FC<LoginPageProps> = ({
   const [emailSuggestions, setEmailSuggestions] = useState<string[]>([]);
   const [loginAttempts, setLoginAttempts] = useState(0);
   const [showAlreadyLoggedIn, setShowAlreadyLoggedIn] = useState(false);
+  const [passwordStrength, setPasswordStrength] = useState(0);
+  const [showPasswordStrength, setShowPasswordStrength] = useState(false);
 
   // Check if user is already authenticated
   useEffect(() => {
@@ -98,6 +101,26 @@ const LoginPage: React.FC<LoginPageProps> = ({
       setError('Multiple failed attempts detected. Please wait before trying again or reset your password.');
     }
   }, [loginAttempts]);
+
+  // Password strength calculation
+  const calculatePasswordStrength = (password: string): number => {
+    let strength = 0;
+    if (password.length >= 8) strength += 25;
+    if (/[A-Z]/.test(password)) strength += 25;
+    if (/[a-z]/.test(password)) strength += 25;
+    if (/[0-9]/.test(password)) strength += 15;
+    if (/[^A-Za-z0-9]/.test(password)) strength += 10;
+    return Math.min(strength, 100);
+  };
+
+  const handlePasswordChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const password = event.target.value;
+    setFormData(prev => ({ ...prev, password }));
+    const strength = calculatePasswordStrength(password);
+    setPasswordStrength(strength);
+    setShowPasswordStrength(password.length > 0);
+    setError(''); // Clear errors when user types
+  };
 
   // Smart login suggestions based on user behavior and context
   useEffect(() => {
@@ -479,7 +502,7 @@ const LoginPage: React.FC<LoginPageProps> = ({
                 id="password"
                 autoComplete="current-password"
                 value={formData.password}
-                onChange={handleInputChange('password')}
+                onChange={handlePasswordChange}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
@@ -527,6 +550,40 @@ const LoginPage: React.FC<LoginPageProps> = ({
                   },
                 }}
               />
+
+              {/* Password Strength Indicator */}
+              {showPasswordStrength && (
+                <Fade in={true} timeout={300}>
+                  <Box sx={{ mt: 1, mb: 2 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                      <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.8)' }}>
+                        Password Strength
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.8)' }}>
+                        {passwordStrength < 25 ? 'Weak' :
+                         passwordStrength < 50 ? 'Fair' :
+                         passwordStrength < 75 ? 'Good' : 'Strong'}
+                      </Typography>
+                    </Box>
+                    <LinearProgress
+                      variant="determinate"
+                      value={passwordStrength}
+                      sx={{
+                        height: 6,
+                        borderRadius: 3,
+                        backgroundColor: 'rgba(255,255,255,0.2)',
+                        '& .MuiLinearProgress-bar': {
+                          backgroundColor:
+                            passwordStrength < 25 ? '#f44336' :
+                            passwordStrength < 50 ? '#ff9800' :
+                            passwordStrength < 75 ? '#2196f3' : '#4caf50',
+                          borderRadius: 3,
+                        },
+                      }}
+                    />
+                  </Box>
+                </Fade>
+              )}
 
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
                 <FormControlLabel

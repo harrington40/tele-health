@@ -2,6 +2,7 @@ import express, { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import db from '../config/database';
+import { authRateLimit, validateLoginInput, bruteForceProtection } from '../middleware/security.middleware';
 const r = require('rethinkdb');
 
 const router = express.Router();
@@ -84,7 +85,7 @@ const getCountryFromPhone = (phoneNumber: string) => {
 };
 
 // Register patient
-router.post('/register/patient', async (req: Request, res: Response): Promise<void> => {
+router.post('/register/patient', authRateLimit, async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, password, first_name, last_name, phone, consent_to_terms, consent_to_privacy, hipaa_consent } = req.body;
 
@@ -139,9 +140,16 @@ router.post('/register/patient', async (req: Request, res: Response): Promise<vo
     const userId = result.generated_keys[0];
 
     // Generate JWT
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      console.error('JWT_SECRET environment variable is not set');
+      res.status(500).json({ error: 'Server configuration error' });
+      return;
+    }
+
     const token = jwt.sign(
       { userId, email: user.email, userType: user.user_type },
-      process.env.JWT_SECRET || 'fallback-secret-change-in-production',
+      jwtSecret,
       { expiresIn: '24h' }
     );
 
@@ -170,7 +178,7 @@ router.post('/register/patient', async (req: Request, res: Response): Promise<vo
 });
 
 // Login
-router.post('/login', async (req: Request, res: Response): Promise<void> => {
+router.post('/login', authRateLimit, bruteForceProtection, validateLoginInput, async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, password } = req.body;
 
@@ -208,9 +216,16 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
     }
 
     // Generate JWT
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      console.error('JWT_SECRET environment variable is not set');
+      res.status(500).json({ error: 'Server configuration error' });
+      return;
+    }
+
     const token = jwt.sign(
       { userId: user.id, email: user.email, userType: user.user_type },
-      process.env.JWT_SECRET || 'fallback-secret-change-in-production',
+      jwtSecret,
       { expiresIn: '24h' }
     );
 
