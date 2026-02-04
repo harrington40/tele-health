@@ -63,7 +63,8 @@ class DatabaseConnection {
         'medical_records',
         'notifications',
         'payments',
-        'prescriptions'
+        'prescriptions',
+        'verification_codes'
       ];
 
       const tableList = await r.tableList().run(this.connection);
@@ -96,7 +97,8 @@ class DatabaseConnection {
       medical_records: ['patientId', 'doctorId', 'createdAt'],
       notifications: ['userId', 'isRead', 'createdAt'],
       payments: ['patientId', 'appointmentId', 'status'],
-      prescriptions: ['patientId', 'doctorId', 'consultationId']
+      prescriptions: ['patientId', 'doctorId', 'consultationId'],
+      verification_codes: ['userId', 'email', 'type', 'verified', 'expiresAt', 'createdAt']
     };
 
     const indexes = indexMap[tableName];

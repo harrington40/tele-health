@@ -59,6 +59,17 @@ export const config = {
   logging: {
     level: process.env.LOG_LEVEL || 'info',
     file: process.env.LOG_FILE || 'logs/app.log'
+  },
+
+  // Email Configuration
+  email: {
+    host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+    port: parseInt(process.env.EMAIL_PORT || '587', 10),
+    secure: process.env.EMAIL_SECURE === 'true',
+    user: process.env.EMAIL_USER || '',
+    password: process.env.EMAIL_PASSWORD || '',
+    from: process.env.EMAIL_FROM || 'noreply@telehealth.com',
+    fromName: process.env.EMAIL_FROM_NAME || 'TeleHealth Portal'
   }
 };
 

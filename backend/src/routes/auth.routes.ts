@@ -3,6 +3,9 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import db from '../config/database';
 import { authRateLimit, validateLoginInput, bruteForceProtection } from '../middleware/security.middleware';
+import emailService from '../services/email.service';
+import verificationService from '../services/verification.service';
+import { config } from '../config';
 const r = require('rethinkdb');
 
 const router = express.Router();
@@ -132,6 +135,8 @@ router.post('/register/patient', authRateLimit, async (req: Request, res: Respon
       consent_to_terms: consent_to_terms || false,
       consent_to_privacy: consent_to_privacy || false,
       hipaa_consent: hipaa_consent || false,
+      email_verified: false, // Require email verification
+      is_active: false, // Account inactive until verified
       created_at: new Date(),
       updated_at: new Date()
     };
@@ -139,36 +144,27 @@ router.post('/register/patient', authRateLimit, async (req: Request, res: Respon
     const result = await r.table('users').insert(user).run(connection);
     const userId = result.generated_keys[0];
 
-    // Generate JWT
-    const jwtSecret = process.env.JWT_SECRET;
-    if (!jwtSecret) {
-      console.error('JWT_SECRET environment variable is not set');
-      res.status(500).json({ error: 'Server configuration error' });
-      return;
+    // Generate and send verification code
+    try {
+      const verificationCode = await verificationService.createVerificationCode(userId, email, 'registration');
+      await emailService.sendVerificationCode(email, verificationCode, 'registration');
+      console.log(`📧 Verification email sent to ${email}`);
+    } catch (emailError) {
+      console.error('Failed to send verification email:', emailError);
+      // Continue even if email fails - user can request resend
     }
 
-    const token = jwt.sign(
-      { userId, email: user.email, userType: user.user_type },
-      jwtSecret,
-      { expiresIn: '24h' }
-    );
-
-    // Set httpOnly cookie
-    res.cookie('auth_token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: 24 * 60 * 60 * 1000 // 24 hours
-    });
-
     res.status(201).json({
-      message: 'Patient registered successfully',
+      message: 'Registration successful. Please check your email for the verification code.',
+      requiresVerification: true,
       user: {
         id: userId,
         email: user.email,
         first_name: user.first_name,
         last_name: user.last_name,
         phone: user.phone,
-        user_type: user.user_type
+        user_type: user.user_type,
+        email_verified: false
       }
     });
   } catch (error) {
@@ -222,37 +218,31 @@ router.post('/login', authRateLimit, bruteForceProtection, validateLoginInput, a
       return;
     }
 
-    // Generate JWT
-    const jwtSecret = process.env.JWT_SECRET;
-    if (!jwtSecret) {
-      console.error('JWT_SECRET environment variable is not set');
-      res.status(500).json({ error: 'Server configuration error' });
+    // Check if email is verified
+    if (!user.email_verified) {
+      res.status(403).json({ 
+        error: 'Email not verified. Please verify your email first.',
+        requiresVerification: true,
+        email: user.email
+      });
       return;
     }
 
-    const token = jwt.sign(
-      { userId: user.id, email: user.email, userType: user.user_type },
-      jwtSecret,
-      { expiresIn: '24h' }
-    );
-
-    // Set httpOnly cookie
-    res.cookie('auth_token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: 24 * 60 * 60 * 1000 // 24 hours
-    });
+    // Generate and send login verification code
+    try {
+      const verificationCode = await verificationService.createVerificationCode(user.id, email, 'login');
+      await emailService.sendVerificationCode(email, verificationCode, 'login');
+      console.log(`📧 Login verification code sent to ${email}`);
+    } catch (emailError) {
+      console.error('Failed to send login verification email:', emailError);
+      // Allow login even if email fails
+    }
 
     res.json({
-      message: 'Login successful',
-      user: {
-        id: user.id,
-        email: user.email,
-        first_name: user.first_name,
-        last_name: user.last_name,
-        phone: user.phone,
-        user_type: user.user_type
-      }
+      message: 'Verification code sent to your email',
+      requiresVerification: true,
+      userId: user.id,
+      email: user.email
     });
   } catch (error) {
     console.error('Login error:', error);
@@ -382,10 +372,174 @@ router.put('/emergency-contact', async (req: Request, res: Response): Promise<vo
 // Logout
 router.post('/logout', async (req: Request, res: Response): Promise<void> => {
   try {
+    // Get user info from token before clearing
+    const token = req.cookies.auth_token;
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, config.jwt.secret) as any;
+        const connection = db.getConnection();
+        const userCursor = await r.table('users').filter({ id: decoded.userId }).run(connection);
+        const users = await userCursor.toArray();
+        
+        if (users.length > 0) {
+          const user = users[0];
+          const userName = `${user.first_name} ${user.last_name}`;
+          const deviceInfo = req.headers['user-agent'] || 'Unknown device';
+          
+          // Send logout notification email
+          try {
+            await emailService.sendLogoutNotification(user.email, userName, deviceInfo);
+            console.log(`📧 Logout notification sent to ${user.email}`);
+          } catch (emailError) {
+            console.error('Failed to send logout notification:', emailError);
+          }
+        }
+      } catch (tokenError) {
+        console.error('Error processing logout notification:', tokenError);
+      }
+    }
+    
     res.clearCookie('auth_token');
     res.json({ message: 'Logged out successfully' });
   } catch (error) {
     console.error('Logout error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Verify email/login code
+router.post('/verify-code', authRateLimit, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { email, code, type } = req.body;
+
+    if (!email || !code || !type) {
+      res.status(400).json({ error: 'Email, code, and type are required' });
+      return;
+    }
+
+    if (!['registration', 'login', 'password_reset'].includes(type)) {
+      res.status(400).json({ error: 'Invalid verification type' });
+      return;
+    }
+
+    // Verify the code
+    const result = await verificationService.verifyCode(email, code, type);
+
+    if (!result.valid) {
+      res.status(400).json({ error: result.message });
+      return;
+    }
+
+    // If login verification, generate JWT token
+    if (type === 'login') {
+      const connection = db.getConnection();
+      const userCursor = await r.table('users').filter({ id: result.userId }).run(connection);
+      const users = await userCursor.toArray();
+      
+      if (users.length === 0) {
+        res.status(404).json({ error: 'User not found' });
+        return;
+      }
+
+      const user = users[0];
+
+      const token = jwt.sign(
+        { userId: user.id, email: user.email, userType: user.user_type },
+        config.jwt.secret,
+        { expiresIn: '24h' }
+      );
+
+      res.cookie('auth_token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 24 * 60 * 60 * 1000
+      });
+
+      res.json({
+        message: 'Login successful',
+        user: {
+          id: user.id,
+          email: user.email,
+          first_name: user.first_name,
+          last_name: user.last_name,
+          phone: user.phone,
+          user_type: user.user_type
+        }
+      });
+    } 
+    // If registration verification, send welcome email
+    else if (type === 'registration') {
+      const connection = db.getConnection();
+      const userCursor = await r.table('users').filter({ id: result.userId }).run(connection);
+      const users = await userCursor.toArray();
+      
+      if (users.length > 0) {
+        const user = users[0];
+        const userName = `${user.first_name} ${user.last_name}`;
+        
+        // Send welcome email
+        try {
+          await emailService.sendWelcomeEmail(user.email, userName);
+          console.log(`📧 Welcome email sent to ${user.email}`);
+        } catch (emailError) {
+          console.error('Failed to send welcome email:', emailError);
+        }
+      }
+
+      res.json({
+        message: 'Email verified successfully. You can now login.',
+        verified: true
+      });
+    } else {
+      res.json({
+        message: result.message,
+        verified: true
+      });
+    }
+  } catch (error) {
+    console.error('Verification error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Resend verification code
+router.post('/resend-code', authRateLimit, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { email, type } = req.body;
+
+    if (!email || !type) {
+      res.status(400).json({ error: 'Email and type are required' });
+      return;
+    }
+
+    if (!['registration', 'login', 'password_reset'].includes(type)) {
+      res.status(400).json({ error: 'Invalid verification type' });
+      return;
+    }
+
+    const result = await verificationService.resendCode(email, type);
+
+    if (!result.success) {
+      res.status(400).json({ error: result.message });
+      return;
+    }
+
+    // Send the new code via email
+    if (result.code) {
+      try {
+        await emailService.sendVerificationCode(email, result.code, type as 'registration' | 'login');
+        console.log(`📧 Verification code resent to ${email}`);
+      } catch (emailError) {
+        console.error('Failed to resend verification email:', emailError);
+      }
+    }
+
+    res.json({
+      message: 'Verification code sent successfully',
+      success: true
+    });
+  } catch (error) {
+    console.error('Resend code error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
