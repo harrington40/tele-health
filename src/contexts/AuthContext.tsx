@@ -75,7 +75,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     const loadUser = async () => {
       try {
-        const response = await fetch('http://localhost:8081/api/auth/me', {
+        const apiBaseUrl = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8081';
+        const response = await fetch(`${apiBaseUrl}/api/auth/me`, {
           credentials: 'include',
         });
 
@@ -127,7 +128,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (email: string, password: string, rememberMe = false): Promise<User> => {
     setIsLoading(true);
     try {
-      const response = await fetch('http://localhost:8081/api/auth/login', {
+      const apiBaseUrl = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8081';
+      const response = await fetch(`${apiBaseUrl}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -175,7 +177,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = async () => {
     try {
-      await fetch('http://localhost:8081/api/auth/logout', {
+      const apiBaseUrl = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8081';
+      await fetch(`${apiBaseUrl}/api/auth/logout`, {
         method: 'POST',
         credentials: 'include',
       });

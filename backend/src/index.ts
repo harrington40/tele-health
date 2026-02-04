@@ -29,12 +29,23 @@ console.log('Express app created');
 app.use(securityHeaders);
 console.log('Security headers middleware added');
 
-// CORS configuration
+// CORS configuration - support multiple origins
+const allowedOrigins = (process.env.CORS_ALLOWED_ORIGINS || 'http://localhost:3000').split(',');
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-  credentials: true
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
-console.log('CORS middleware added');
+console.log('CORS middleware added with allowed origins:', allowedOrigins);
 
 // Rate limiting
 app.use('/api/', apiRateLimit);

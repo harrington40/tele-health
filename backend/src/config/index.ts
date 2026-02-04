@@ -1,6 +1,7 @@
 import dotenv from 'dotenv';
 
-dotenv.config();
+// Don't override environment variables set by PM2
+dotenv.config({ override: false });
 
 export const config = {
   // Environment

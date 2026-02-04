@@ -76,7 +76,7 @@ app.get('/api/patients', async (req, res) => {
   }
 });
 
-const PORT = 8083;
+const PORT = 8081;
 const server = app.listen(PORT, () => {
   console.log(`HTTP API server running on port ${PORT}`);
   console.log(`Doctors API: http://localhost:${PORT}/api/doctors`);

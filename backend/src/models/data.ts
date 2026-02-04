@@ -3,7 +3,7 @@ import { Doctor, Appointment, Patient, Service, ConsultationSession } from './ty
 // Mock Doctors Data
 export const doctors: Doctor[] = [
   {
-    id: 1,
+    id: "1",
     name: 'Dr. Sarah Johnson',
     specialty: 'Family Medicine',
     rating: 4.9,
@@ -70,7 +70,7 @@ export const doctors: Doctor[] = [
     ],
   },
   {
-    id: 2,
+    id: "2",
     name: 'Dr. Michael Chen',
     specialty: 'Internal Medicine',
     rating: 4.8,
@@ -146,7 +146,7 @@ export const patients: Patient[] = [
 export const appointments: Appointment[] = [
   {
     id: 1,
-    doctorId: 1,
+    doctorId: "1",
     patientId: 1,
     date: '2024-03-20',
     time: '10:00 AM',
@@ -184,7 +184,7 @@ export const consultationSessions: ConsultationSession[] = [
   {
     id: 'session-1',
     appointmentId: 1,
-    doctorId: 1,
+    doctorId: "1",
     patientId: 1,
     roomId: 'room-123',
     startTime: '2024-03-20T10:00:00Z',

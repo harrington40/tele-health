@@ -4,7 +4,7 @@ import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { CountryProvider } from './contexts/CountryContext';
 import { AuthProvider } from './contexts/AuthContext';
-// import './i18n/i18n'; // Initialize i18n
+import './i18n/i18n'; // Initialize i18n
 import AppRoutes from './AppRoutes';
 import InactivityWarningDialog from './components/InactivityWarningDialog';
 import { useInactivityTimeout } from './hooks/useInactivityTimeout';

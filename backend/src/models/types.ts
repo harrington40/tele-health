@@ -1,5 +1,5 @@
 export interface Doctor {
-  id: number;
+  id: string;
   name: string;
   specialty: string;
   rating: number;
@@ -39,7 +39,7 @@ export interface PatientReview {
 
 export interface PricingActivity {
   id: string;
-  doctorId: number;
+  doctorId: string;
   action: 'discount_enabled' | 'discount_disabled' | 'discount_updated' | 'price_changed';
   oldPrice?: number;
   newPrice?: number;
@@ -51,7 +51,7 @@ export interface PricingActivity {
 
 export interface Appointment {
   id: number;
-  doctorId: number;
+  doctorId: string;
   patientId: number;
   date: string;
   time: string;
@@ -91,7 +91,7 @@ export interface Service {
 export interface ConsultationSession {
   id: string;
   appointmentId: number;
-  doctorId: number;
+  doctorId: string;
   patientId: number;
   roomId: string;
   startTime: string;

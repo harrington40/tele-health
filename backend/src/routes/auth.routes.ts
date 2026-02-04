@@ -208,8 +208,15 @@ router.post('/login', authRateLimit, bruteForceProtection, validateLoginInput, a
 
     const user = userArray[0];
 
-    // Check password
-    const isValidPassword = await bcrypt.compare(password, user.password);
+    // Check password - support both password and password_hash fields
+    const storedPassword = user.password || user.password_hash;
+    if (!storedPassword) {
+      console.error('User has no password set');
+      res.status(401).json({ error: 'Invalid credentials' });
+      return;
+    }
+
+    const isValidPassword = await bcrypt.compare(password, storedPassword);
     if (!isValidPassword) {
       res.status(401).json({ error: 'Invalid credentials' });
       return;

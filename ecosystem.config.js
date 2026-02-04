@@ -7,23 +7,21 @@ module.exports = {
       exec_mode: 'fork',
       env: {
         NODE_ENV: 'development',
-        PORT: 3002,
+        PORT: 3001,
         RETHINKDB_HOST: '207.180.247.153',
         RETHINKDB_PORT: '28015',
         RETHINKDB_DB: 'telehealth_db_db',
         RETHINKDB_AUTH_KEY: 'Cosinesine900**',
-        JWT_SECRET: '61a9da51045154acad936da43acd6542d918ca64fde2e4c228be9add1b9c5f0e2d3c804923fc356449db0c1f0870256802f399778465cbc2fc24a7010c09a812',
-        FRONTEND_URL: 'http://tel.transtechologies.com'
+        CORS_ALLOWED_ORIGINS: 'http://localhost:3000,http://tel.transtechologies.com,https://tel.transtechologies.com'
       },
       env_production: {
         NODE_ENV: 'production',
-        PORT: 3002,
+        PORT: 3001,
         RETHINKDB_HOST: '207.180.247.153',
         RETHINKDB_PORT: '28015',
         RETHINKDB_DB: 'telehealth_db_db',
         RETHINKDB_AUTH_KEY: 'Cosinesine900**',
-        JWT_SECRET: '61a9da51045154acad936da43acd6542d918ca64fde2e4c228be9add1b9c5f0e2d3c804923fc356449db0c1f0870256802f399778465cbc2fc24a7010c09a812',
-        FRONTEND_URL: 'http://tel.transtechologies.com'
+        CORS_ALLOWED_ORIGINS: 'http://localhost:3000,http://tel.transtechologies.com,https://tel.transtechologies.com'
       }
     }
   ]

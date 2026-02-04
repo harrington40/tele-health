@@ -32,7 +32,7 @@ export class DoctorController {
   static getDoctorById(req: Request, res: Response): void {
     try {
       const { id } = req.params;
-      const doctor = doctors.find((d) => d.id === parseInt(id));
+      const doctor = doctors.find((d) => d.id === id);
 
       if (!doctor) {
         res.status(404).json({ error: 'Doctor not found' });
@@ -75,7 +75,7 @@ export class DoctorController {
       const { id } = req.params;
       const { discountSettings } = req.body;
       
-      const doctorIndex = doctors.findIndex((d) => d.id === parseInt(id));
+      const doctorIndex = doctors.findIndex((d) => d.id === id);
       
       if (doctorIndex === -1) {
         res.status(404).json({ error: 'Doctor not found' });
@@ -88,7 +88,7 @@ export class DoctorController {
       // Add to pricing history
       const activity: PricingActivity = {
         id: Date.now().toString(),
-        doctorId: parseInt(id),
+        doctorId: id,
         action: discountSettings.isEnabled ? 'discount_enabled' as const : 'discount_disabled' as const,
         description: discountSettings.isEnabled 
           ? `Enabled ${discountSettings.discountPercentage}% discount`
@@ -114,7 +114,7 @@ export class DoctorController {
   static getDoctorPricingHistory(req: Request, res: Response): void {
     try {
       const { id } = req.params;
-      const doctor = doctors.find((d) => d.id === parseInt(id));
+      const doctor = doctors.find((d) => d.id === id);
 
       if (!doctor) {
         res.status(404).json({ error: 'Doctor not found' });
