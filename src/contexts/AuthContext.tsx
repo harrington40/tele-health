@@ -6,11 +6,13 @@ export interface User {
   lastName: string;
   email: string;
   phone: string;
-  userType: 'client' | 'provider';
+  userType: 'client' | 'provider' | 'tech_support';
   country?: {
     code: string;
     name: string;
   };
+  employeeId?: string;
+  department?: string;
   profilePicture?: string;
   dateOfBirth?: string;
   gender?: string;
@@ -95,8 +97,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             lastName: user.last_name,
             email: user.email,
             phone: user.phone,
-            userType: user.user_type === 'patient' ? 'client' : user.user_type === 'doctor' ? 'provider' : user.user_type,
+            userType: user.user_type === 'patient' ? 'client' : 
+                     user.user_type === 'doctor' ? 'provider' : 
+                     user.user_type === 'tech_support' ? 'tech_support' : 
+                     user.user_type,
             country: user.country,
+            employeeId: user.employee_id,
+            department: user.department,
             profilePicture: '/api/placeholder/150/150',
             dateOfBirth: '',
             gender: '',
@@ -176,8 +183,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           lastName: user.last_name,
           email: user.email,
           phone: user.phone,
-          userType: user.user_type === 'patient' ? 'client' : user.user_type === 'doctor' ? 'provider' : user.user_type,
+          userType: user.user_type === 'patient' ? 'client' : 
+                   user.user_type === 'doctor' ? 'provider' : 
+                   user.user_type === 'tech_support' ? 'tech_support' : 
+                   user.user_type,
           country: user.country,
+          employeeId: user.employee_id,
+          department: user.department,
           profilePicture: '/api/placeholder/150/150',
           dateOfBirth: '',
           gender: '',
@@ -234,8 +246,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         lastName: user.last_name,
         email: user.email,
         phone: user.phone,
-        userType: user.user_type === 'patient' ? 'client' : user.user_type === 'doctor' ? 'provider' : user.user_type,
+        userType: user.user_type === 'patient' ? 'client' : 
+                 user.user_type === 'doctor' ? 'provider' : 
+                 user.user_type === 'tech_support' ? 'tech_support' : 
+                 user.user_type,
         country: user.country,
+        employeeId: user.employee_id,
+        department: user.department,
         profilePicture: '/api/placeholder/150/150',
         dateOfBirth: '',
         gender: '',

@@ -173,6 +173,84 @@ router.post('/register/patient', authRateLimit, async (req: Request, res: Respon
   }
 });
 
+// Register tech support
+router.post('/register/tech-support', authRateLimit, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { email, password, first_name, last_name, phone, employee_id, department } = req.body;
+
+    // Validate required fields
+    if (!email || !password || !first_name || !last_name || !employee_id) {
+      res.status(400).json({ error: 'Missing required fields' });
+      return;
+    }
+
+    // Check database connection
+    try {
+      db.getConnection();
+    } catch (error) {
+      console.error('Database not connected:', error);
+      res.status(503).json({ error: 'Database service unavailable' });
+      return;
+    }
+
+    const connection = db.getConnection();
+
+    // Check if user already exists
+    const existingUser = await r.table('users').filter({ email }).run(connection);
+    const existingArray = await existingUser.toArray();
+    if (existingArray.length > 0) {
+      res.status(409).json({ error: 'User already exists' });
+      return;
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create tech support user
+    const user = {
+      email,
+      password: hashedPassword,
+      first_name,
+      last_name,
+      phone: phone || '',
+      user_type: 'tech_support',
+      employee_id,
+      department: department || 'Support',
+      email_verified: true, // Auto-verify tech support accounts
+      is_active: true,
+      created_at: new Date(),
+      updated_at: new Date()
+    };
+
+    const result = await r.table('users').insert(user).run(connection);
+    const userId = result.generated_keys[0];
+
+    // Send welcome email
+    try {
+      await emailService.sendWelcomeEmail(email, `${first_name} ${last_name}`);
+      console.log(`📧 Welcome email sent to tech support: ${email}`);
+    } catch (emailError) {
+      console.error('Failed to send welcome email:', emailError);
+    }
+
+    res.status(201).json({
+      message: 'Tech support account created successfully',
+      user: {
+        id: userId,
+        email: user.email,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        user_type: user.user_type,
+        employee_id: user.employee_id,
+        department: user.department
+      }
+    });
+  } catch (error) {
+    console.error('Tech support registration error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Login
 router.post('/login', authRateLimit, bruteForceProtection, validateLoginInput, async (req: Request, res: Response): Promise<void> => {
   try {

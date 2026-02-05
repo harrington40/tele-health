@@ -21,6 +21,8 @@ import AuthPage from './pages/AuthPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import TechSupportLoginPage from './pages/TechSupportLoginPage';
+import TechSupportDashboard from './pages/TechSupportDashboard';
 import './App.css';
 
 const AppRoutes: React.FC = () => {
@@ -31,6 +33,7 @@ const AppRoutes: React.FC = () => {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/tech-support-login" element={<TechSupportLoginPage />} />
 
         {/* Main app routes with navbar/footer */}
         <Route path="/*" element={
@@ -46,6 +49,7 @@ const AppRoutes: React.FC = () => {
                 <Route path="/consultation/:id" element={<ConsultationPage />} />
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/provider-dashboard" element={<ProviderDashboard />} />
+                <Route path="/tech-support-dashboard" element={<TechSupportDashboard />} />
                 <Route path="/help" element={<HelpCenterPage />} />
                 <Route path="/contact" element={<ContactPage />} />
                 <Route path="/privacy" element={<PrivacyPolicyPage />} />
