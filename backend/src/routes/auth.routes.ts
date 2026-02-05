@@ -544,4 +544,133 @@ router.post('/resend-code', authRateLimit, async (req: Request, res: Response): 
   }
 });
 
+// Forgot password - send reset code
+router.post('/forgot-password', authRateLimit, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      res.status(400).json({ error: 'Email is required' });
+      return;
+    }
+
+    // Check database connection
+    try {
+      db.getConnection();
+    } catch (error) {
+      console.error('Database not connected:', error);
+      res.status(503).json({ error: 'Database service unavailable' });
+      return;
+    }
+
+    const connection = db.getConnection();
+
+    // Check if user exists
+    const userCursor = await r.table('users').filter({ email }).run(connection);
+    const userArray = await userCursor.toArray();
+
+    if (userArray.length === 0) {
+      // Don't reveal if user exists or not for security
+      res.json({
+        message: 'If an account exists with this email, a password reset code has been sent.',
+        success: true
+      });
+      return;
+    }
+
+    const user = userArray[0];
+
+    // Generate and send password reset code
+    try {
+      const verificationCode = await verificationService.createVerificationCode(user.id, email, 'password_reset');
+      await emailService.sendVerificationCode(email, verificationCode, 'password_reset');
+      console.log(`📧 Password reset code sent to ${email}`);
+    } catch (emailError) {
+      console.error('Failed to send password reset email:', emailError);
+      res.status(500).json({ error: 'Failed to send password reset email' });
+      return;
+    }
+
+    res.json({
+      message: 'If an account exists with this email, a password reset code has been sent.',
+      success: true,
+      email: email
+    });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Reset password with verification code
+router.post('/reset-password', authRateLimit, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { email, code, newPassword } = req.body;
+
+    if (!email || !code || !newPassword) {
+      res.status(400).json({ error: 'Email, code, and new password are required' });
+      return;
+    }
+
+    // Validate password strength
+    if (newPassword.length < 8) {
+      res.status(400).json({ error: 'Password must be at least 8 characters long' });
+      return;
+    }
+
+    // Verify the code
+    const result = await verificationService.verifyCode(email, code, 'password_reset');
+
+    if (!result.valid) {
+      res.status(400).json({ error: result.message });
+      return;
+    }
+
+    // Check database connection
+    try {
+      db.getConnection();
+    } catch (error) {
+      console.error('Database not connected:', error);
+      res.status(503).json({ error: 'Database service unavailable' });
+      return;
+    }
+
+    const connection = db.getConnection();
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, config.bcrypt.rounds);
+
+    // Update user password
+    await r.table('users')
+      .filter({ id: result.userId })
+      .update({
+        password: hashedPassword,
+        password_hash: hashedPassword,
+        updated_at: new Date().toISOString()
+      })
+      .run(connection);
+
+    // Send confirmation email
+    try {
+      const userCursor = await r.table('users').get(result.userId).run(connection);
+      if (userCursor) {
+        const userName = `${userCursor.first_name} ${userCursor.last_name}`;
+        // For now, just send a simple notification (we can create a dedicated template later)
+        await emailService.sendWelcomeEmail(userCursor.email, userName);
+        console.log(`📧 Password reset confirmation sent to ${email}`);
+      }
+    } catch (emailError) {
+      console.error('Failed to send password reset confirmation:', emailError);
+    }
+
+    res.json({
+      message: 'Password reset successfully. You can now login with your new password.',
+      success: true
+    });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;

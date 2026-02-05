@@ -21,6 +21,10 @@ class EmailService {
         user: config.email.user,
         pass: config.email.password,
       },
+      tls: {
+        // Allow self-signed certificates
+        rejectUnauthorized: false
+      }
     });
   }
 
@@ -48,10 +52,12 @@ class EmailService {
   /**
    * Send verification code email
    */
-  async sendVerificationCode(email: string, code: string, type: 'registration' | 'login'): Promise<void> {
+  async sendVerificationCode(email: string, code: string, type: 'registration' | 'login' | 'password_reset'): Promise<void> {
     const subject = type === 'registration' 
       ? 'Verify Your TeleHealth Account' 
-      : 'Your TeleHealth Login Verification Code';
+      : type === 'login'
+      ? 'Your TeleHealth Login Verification Code'
+      : 'Reset Your TeleHealth Password';
 
     const html = `
       <!DOCTYPE html>
@@ -74,13 +80,15 @@ class EmailService {
             <h1>🏥 TeleHealth Portal</h1>
           </div>
           <div class="content">
-            <h2>${type === 'registration' ? 'Welcome to TeleHealth!' : 'Login Verification'}</h2>
+            <h2>${type === 'registration' ? 'Welcome to TeleHealth!' : type === 'login' ? 'Login Verification' : 'Password Reset Request'}</h2>
             <p>${type === 'registration' 
               ? 'Thank you for registering with TeleHealth. To complete your registration and secure your account, please use the verification code below:' 
-              : 'We detected a login attempt to your TeleHealth account. Please use the verification code below to complete your login:'}</p>
+              : type === 'login'
+              ? 'We detected a login attempt to your TeleHealth account. Please use the verification code below to complete your login:'
+              : 'We received a request to reset your password. Please use the verification code below to set a new password:'}</p>
             
             <div class="code-box">
-              <p style="margin: 0; font-size: 14px; color: #666;">Your Verification Code</p>
+              <p style="margin: 0; font-size: 14px; color: #666;">${type === 'password_reset' ? 'Password Reset Code' : 'Your Verification Code'}</p>
               <div class="code">${code}</div>
               <p style="margin: 0; font-size: 12px; color: #999;">Valid for 15 minutes</p>
             </div>
@@ -91,7 +99,7 @@ class EmailService {
                 <li>This code will expire in <strong>15 minutes</strong></li>
                 <li>Never share this code with anyone</li>
                 <li>TeleHealth staff will never ask for your verification code</li>
-                <li>If you didn't request this code, please ignore this email</li>
+                <li>If you didn't request this code, please ignore this email${type === 'password_reset' ? ' and consider changing your password' : ''}</li>
               </ul>
             </div>
 
@@ -101,6 +109,13 @@ class EmailService {
                 <li>Enter the 7-digit code in the verification screen</li>
                 <li>Complete your profile setup</li>
                 <li>Start booking appointments with healthcare providers</li>
+              </ol>
+            ` : type === 'password_reset' ? `
+              <p><strong>To reset your password:</strong></p>
+              <ol>
+                <li>Enter the 7-digit code in the password reset screen</li>
+                <li>Create a strong new password (at least 8 characters)</li>
+                <li>Log in with your new password</li>
               </ol>
             ` : ''}
 

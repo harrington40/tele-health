@@ -49,7 +49,7 @@ const LoginPage: React.FC<LoginPageProps> = ({
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { login, logout, isLoading: authLoading, user, isAuthenticated } = useAuth();
+  const { login, logout, isLoading: authLoading, user, isAuthenticated, pendingVerification, verifyCode, resendCode } = useAuth();
 
   const [formData, setFormData] = useState({
     email: '',
@@ -66,6 +66,10 @@ const LoginPage: React.FC<LoginPageProps> = ({
   const [showAlreadyLoggedIn, setShowAlreadyLoggedIn] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState(0);
   const [showPasswordStrength, setShowPasswordStrength] = useState(false);
+  const [verificationCode, setVerificationCode] = useState('');
+  const [showVerificationInput, setShowVerificationInput] = useState(false);
+  const [verificationEmail, setVerificationEmail] = useState('');
+  const [resendCooldown, setResendCooldown] = useState(0);
 
   // Check if user is already authenticated
   useEffect(() => {
@@ -186,22 +190,77 @@ const LoginPage: React.FC<LoginPageProps> = ({
         await onLogin(formData.email, formData.password, formData.rememberMe);
       } else {
         // Use auth context for login
-        const loggedInUser = await login(formData.email, formData.password, formData.rememberMe);
+        const result = await login(formData.email, formData.password, formData.rememberMe);
 
-        // Show success message briefly before redirecting
-        setError(''); // Clear any errors
-        
-        // Navigate based on user type after a brief delay
-        console.log('Logged in user:', loggedInUser);
-        console.log('User type:', loggedInUser.userType);
-        
-        setTimeout(() => {
-          navigate(loggedInUser.userType === 'provider' ? '/provider-dashboard' : '/dashboard');
-        }, 500); // Small delay to show success
+        // Check if verification is required
+        if (result.requiresVerification) {
+          setShowVerificationInput(true);
+          setVerificationEmail(result.email || formData.email);
+          setError(''); // Clear any errors
+        } else {
+          // Navigate based on user type (shouldn't happen with new flow)
+          navigate(user?.userType === 'provider' ? '/provider-dashboard' : '/dashboard');
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
       setLoginAttempts(prev => prev + 1);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyCode = async () => {
+    if (!verificationCode || verificationCode.length !== 7) {
+      setError('Please enter the 7-digit verification code');
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const loggedInUser = await verifyCode(verificationEmail, verificationCode, 'login');
+      
+      // Navigate based on user type
+      console.log('Logged in user:', loggedInUser);
+      console.log('User type:', loggedInUser.userType);
+      
+      setTimeout(() => {
+        navigate(loggedInUser.userType === 'provider' ? '/provider-dashboard' : '/dashboard');
+      }, 500);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Verification failed');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResendCode = async () => {
+    if (resendCooldown > 0) {
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+
+    try {
+      await resendCode(verificationEmail, 'login');
+      setResendCooldown(60); // 60 second cooldown
+      setError(''); // Clear any errors
+      
+      // Start countdown
+      const interval = setInterval(() => {
+        setResendCooldown(prev => {
+          if (prev <= 1) {
+            clearInterval(interval);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to resend code');
     } finally {
       setIsLoading(false);
     }
@@ -626,7 +685,7 @@ const LoginPage: React.FC<LoginPageProps> = ({
                 type="submit"
                 fullWidth
                 variant="contained"
-                disabled={isLoading}
+                disabled={isLoading || showVerificationInput}
                 sx={{
                   mt: 3,
                   mb: 2,
@@ -650,6 +709,144 @@ const LoginPage: React.FC<LoginPageProps> = ({
                   t('auth.signIn', 'Sign In')
                 )}
               </Button>
+
+              {/* Email Verification Section */}
+              {showVerificationInput && (
+                <Fade in={true} timeout={600}>
+                  <Box sx={{ mt: 3, mb: 2 }}>
+                    <Alert
+                      severity="success"
+                      sx={{
+                        mb: 2,
+                        backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                        color: 'white',
+                        border: '1px solid rgba(76, 175, 80, 0.3)',
+                        '& .MuiAlert-icon': { color: '#4caf50' }
+                      }}
+                    >
+                      <Typography variant="body2">
+                        📧 A 7-digit verification code has been sent to <strong>{verificationEmail}</strong>
+                      </Typography>
+                      <Typography variant="caption" sx={{ display: 'block', mt: 1, opacity: 0.8 }}>
+                        The code will expire in 15 minutes
+                      </Typography>
+                    </Alert>
+
+                    <TextField
+                      margin="normal"
+                      required
+                      fullWidth
+                      id="verificationCode"
+                      label="Verification Code"
+                      name="verificationCode"
+                      autoComplete="off"
+                      value={verificationCode}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, '').slice(0, 7);
+                        setVerificationCode(value);
+                      }}
+                      placeholder="Enter 7-digit code"
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <Security sx={{ color: 'rgba(255,255,255,0.7)' }} />
+                          </InputAdornment>
+                        ),
+                      }}
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          backgroundColor: 'rgba(255,255,255,0.1)',
+                          color: 'white',
+                          '& fieldset': {
+                            borderColor: 'rgba(255,255,255,0.3)',
+                          },
+                          '&:hover fieldset': {
+                            borderColor: 'rgba(255,255,255,0.5)',
+                          },
+                          '&.Mui-focused fieldset': {
+                            borderColor: 'white',
+                          },
+                        },
+                        '& .MuiInputLabel-root': {
+                          color: 'rgba(255,255,255,0.7)',
+                          '&.Mui-focused': {
+                            color: 'white',
+                          },
+                        },
+                        '& input': {
+                          fontSize: '1.5rem',
+                          letterSpacing: '0.5rem',
+                          textAlign: 'center',
+                          fontWeight: 'bold',
+                        }
+                      }}
+                    />
+
+                    <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
+                      <Button
+                        fullWidth
+                        variant="contained"
+                        onClick={handleVerifyCode}
+                        disabled={isLoading || verificationCode.length !== 7}
+                        sx={{
+                          py: 1.5,
+                          backgroundColor: 'white',
+                          color: 'primary.main',
+                          borderRadius: 2,
+                          fontWeight: 'bold',
+                          '&:hover': {
+                            backgroundColor: 'rgba(255,255,255,0.9)',
+                          },
+                        }}
+                      >
+                        {isLoading ? (
+                          <CircularProgress size={24} sx={{ color: 'primary.main' }} />
+                        ) : (
+                          'Verify Code'
+                        )}
+                      </Button>
+
+                      <Button
+                        variant="outlined"
+                        onClick={handleResendCode}
+                        disabled={resendCooldown > 0 || isLoading}
+                        sx={{
+                          py: 1.5,
+                          borderColor: 'rgba(255,255,255,0.5)',
+                          color: 'white',
+                          borderRadius: 2,
+                          '&:hover': {
+                            borderColor: 'white',
+                            backgroundColor: 'rgba(255,255,255,0.1)',
+                          },
+                        }}
+                      >
+                        {resendCooldown > 0 ? `Resend (${resendCooldown}s)` : 'Resend Code'}
+                      </Button>
+                    </Box>
+
+                    <Box sx={{ textAlign: 'center', mt: 2 }}>
+                      <Button
+                        onClick={() => {
+                          setShowVerificationInput(false);
+                          setVerificationCode('');
+                          setError('');
+                        }}
+                        sx={{
+                          color: 'rgba(255,255,255,0.7)',
+                          fontSize: '0.875rem',
+                          '&:hover': {
+                            color: 'white',
+                            backgroundColor: 'rgba(255,255,255,0.1)',
+                          },
+                        }}
+                      >
+                        ← Back to Login
+                      </Button>
+                    </Box>
+                  </Box>
+                </Fade>
+              )}
             </Box>
 
             {/* Demo Login Credentials */}
