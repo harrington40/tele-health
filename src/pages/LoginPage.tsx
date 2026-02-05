@@ -199,7 +199,13 @@ const LoginPage: React.FC<LoginPageProps> = ({
           setError(''); // Clear any errors
         } else {
           // Navigate based on user type (shouldn't happen with new flow)
-          navigate(user?.userType === 'provider' ? '/provider-dashboard' : '/dashboard');
+          if (user?.userType === 'provider') {
+            navigate('/provider-dashboard');
+          } else if (user?.userType === 'tech_support') {
+            navigate('/tech-support-dashboard');
+          } else {
+            navigate('/dashboard');
+          }
         }
       }
     } catch (err) {
@@ -227,7 +233,13 @@ const LoginPage: React.FC<LoginPageProps> = ({
       console.log('User type:', loggedInUser.userType);
       
       setTimeout(() => {
-        navigate(loggedInUser.userType === 'provider' ? '/provider-dashboard' : '/dashboard');
+        if (loggedInUser.userType === 'provider') {
+          navigate('/provider-dashboard');
+        } else if (loggedInUser.userType === 'tech_support') {
+          navigate('/tech-support-dashboard');
+        } else {
+          navigate('/dashboard');
+        }
       }, 500);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Verification failed');
@@ -302,7 +314,13 @@ const LoginPage: React.FC<LoginPageProps> = ({
 
   const handleContinueToDashboard = () => {
     if (user) {
-      navigate(user.userType === 'provider' ? '/provider-dashboard' : '/dashboard');
+      if (user.userType === 'provider') {
+        navigate('/provider-dashboard');
+      } else if (user.userType === 'tech_support') {
+        navigate('/tech-support-dashboard');
+      } else {
+        navigate('/dashboard');
+      }
     }
   };
 
