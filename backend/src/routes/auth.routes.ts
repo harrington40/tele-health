@@ -306,39 +306,7 @@ router.post('/login', authRateLimit, bruteForceProtection, validateLoginInput, a
       return;
     }
 
-    // Tech support users skip 2-step verification - direct login
-    if (user.user_type === 'tech_support') {
-      // Generate JWT token directly
-      const token = jwt.sign(
-        { userId: user.id, email: user.email, userType: user.user_type },
-        process.env.JWT_SECRET || 'fallback-secret-change-in-production',
-        { expiresIn: '7d' }
-      );
-
-      // Set cookie
-      res.cookie('auth_token', token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-        sameSite: 'lax'
-      });
-
-      res.json({
-        message: 'Login successful',
-        user: {
-          id: user.id,
-          email: user.email,
-          first_name: user.first_name,
-          last_name: user.last_name,
-          user_type: user.user_type,
-          employee_id: user.employee_id,
-          department: user.department
-        }
-      });
-      return;
-    }
-
-    // For regular users (patients/doctors), generate and send login verification code
+    // Generate and send login verification code for all users
     try {
       const verificationCode = await verificationService.createVerificationCode(user.id, email, 'login');
       await emailService.sendVerificationCode(email, verificationCode, 'login');

@@ -18,14 +18,15 @@ import {
   Lock,
   SupportAgent,
   Visibility,
-  VisibilityOff
+  VisibilityOff,
+  Security
 } from '@mui/icons-material';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 const TechSupportLoginPage: React.FC = () => {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, verifyCode, resendCode } = useAuth();
 
   const [formData, setFormData] = useState({
     email: '',
@@ -34,6 +35,10 @@ const TechSupportLoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [verificationCode, setVerificationCode] = useState('');
+  const [showVerificationInput, setShowVerificationInput] = useState(false);
+  const [verificationEmail, setVerificationEmail] = useState('');
+  const [resendCooldown, setResendCooldown] = useState(0);
 
   const handleInputChange = (field: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({
@@ -52,14 +57,62 @@ const TechSupportLoginPage: React.FC = () => {
       const result = await login(formData.email, formData.password, false);
 
       if (result.requiresVerification) {
-        // Tech support accounts are auto-verified, so this shouldn't happen
-        setError('Email verification required');
+        setShowVerificationInput(true);
+        setVerificationEmail(result.email || formData.email);
+        setError('');
       } else {
-        // Navigate to tech support dashboard
         navigate('/tech-support-dashboard');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyCode = async () => {
+    if (!verificationCode || verificationCode.length !== 7) {
+      setError('Please enter the 7-digit verification code');
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+
+    try {
+      await verifyCode(verificationEmail, verificationCode, 'login');
+      navigate('/tech-support-dashboard');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Verification failed');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResendCode = async () => {
+    if (resendCooldown > 0) {
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+
+    try {
+      await resendCode(verificationEmail, 'login');
+      setResendCooldown(60);
+      setError('');
+      
+      const interval = setInterval(() => {
+        setResendCooldown(prev => {
+          if (prev <= 1) {
+            clearInterval(interval);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to resend code');
     } finally {
       setIsLoading(false);
     }
@@ -221,6 +274,144 @@ const TechSupportLoginPage: React.FC = () => {
                 'Sign In'
               )}
             </Button>
+
+            {/* Email Verification Section */}
+            {showVerificationInput && (
+              <Fade in={true} timeout={600}>
+                <Box sx={{ mt: 3, mb: 2 }}>
+                  <Alert
+                    severity="success"
+                    sx={{
+                      mb: 2,
+                      backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                      color: 'white',
+                      border: '1px solid rgba(76, 175, 80, 0.3)',
+                      '& .MuiAlert-icon': { color: '#4caf50' }
+                    }}
+                  >
+                    <Typography variant="body2">
+                      📧 A 7-digit verification code has been sent to <strong>{verificationEmail}</strong>
+                    </Typography>
+                    <Typography variant="caption" sx={{ display: 'block', mt: 1, opacity: 0.8 }}>
+                      The code will expire in 15 minutes
+                    </Typography>
+                  </Alert>
+
+                  <TextField
+                    margin="normal"
+                    required
+                    fullWidth
+                    id="verificationCode"
+                    label="Verification Code"
+                    name="verificationCode"
+                    autoComplete="off"
+                    value={verificationCode}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/\D/g, '').slice(0, 7);
+                      setVerificationCode(value);
+                    }}
+                    placeholder="Enter 7-digit code"
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <Security sx={{ color: 'rgba(255,255,255,0.7)' }} />
+                        </InputAdornment>
+                      ),
+                    }}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        backgroundColor: 'rgba(255,255,255,0.1)',
+                        color: 'white',
+                        '& fieldset': {
+                          borderColor: 'rgba(255,255,255,0.3)',
+                        },
+                        '&:hover fieldset': {
+                          borderColor: 'rgba(255,255,255,0.5)',
+                        },
+                        '&.Mui-focused fieldset': {
+                          borderColor: 'white',
+                        },
+                      },
+                      '& .MuiInputLabel-root': {
+                        color: 'rgba(255,255,255,0.7)',
+                        '&.Mui-focused': {
+                          color: 'white',
+                        },
+                      },
+                      '& input': {
+                        fontSize: '1.5rem',
+                        letterSpacing: '0.5rem',
+                        textAlign: 'center',
+                        fontWeight: 'bold',
+                      }
+                    }}
+                  />
+
+                  <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
+                    <Button
+                      fullWidth
+                      variant="contained"
+                      onClick={handleVerifyCode}
+                      disabled={isLoading || verificationCode.length !== 7}
+                      sx={{
+                        py: 1.5,
+                        backgroundColor: 'white',
+                        color: 'primary.main',
+                        borderRadius: 2,
+                        fontWeight: 'bold',
+                        '&:hover': {
+                          backgroundColor: 'rgba(255,255,255,0.9)',
+                        },
+                      }}
+                    >
+                      {isLoading ? (
+                        <CircularProgress size={24} sx={{ color: 'primary.main' }} />
+                      ) : (
+                        'Verify Code'
+                      )}
+                    </Button>
+
+                    <Button
+                      variant="outlined"
+                      onClick={handleResendCode}
+                      disabled={resendCooldown > 0 || isLoading}
+                      sx={{
+                        py: 1.5,
+                        borderColor: 'rgba(255,255,255,0.5)',
+                        color: 'white',
+                        borderRadius: 2,
+                        '&:hover': {
+                          borderColor: 'white',
+                          backgroundColor: 'rgba(255,255,255,0.1)',
+                        },
+                      }}
+                    >
+                      {resendCooldown > 0 ? `Resend (${resendCooldown}s)` : 'Resend Code'}
+                    </Button>
+                  </Box>
+
+                  <Box sx={{ textAlign: 'center', mt: 2 }}>
+                    <Button
+                      onClick={() => {
+                        setShowVerificationInput(false);
+                        setVerificationCode('');
+                        setError('');
+                      }}
+                      sx={{
+                        color: 'rgba(255,255,255,0.7)',
+                        fontSize: '0.875rem',
+                        '&:hover': {
+                          color: 'white',
+                          backgroundColor: 'rgba(255,255,255,0.1)',
+                        },
+                      }}
+                    >
+                      ← Back to Login
+                    </Button>
+                  </Box>
+                </Box>
+              </Fade>
+            )}
 
             <Box sx={{ textAlign: 'center', mt: 2 }}>
               <MuiLink
