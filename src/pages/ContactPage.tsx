@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Container,
   Typography,
@@ -48,10 +49,15 @@ import {
   Security,
   Groups,
   CheckCircle,
-  Close
+  Close,
+  QuestionAnswer
 } from '@mui/icons-material';
+import MessagingSystem from '../components/MessagingSystem';
+import { useAuth } from '../contexts/AuthContext';
 
 const ContactPage: React.FC = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -62,6 +68,7 @@ const ContactPage: React.FC = () => {
     urgency: 'normal'
   });
   const [showLiveChat, setShowLiveChat] = useState(false);
+  const [showTechSupport, setShowTechSupport] = useState(false);
   const [chatMessage, setChatMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -224,6 +231,85 @@ const ContactPage: React.FC = () => {
           We're here to help! Choose your preferred way to get in touch with our support team
         </Typography>
       </Box>
+
+      {/* Tech Support Chat Button */}
+      <Card
+        sx={{
+          mb: 4,
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          color: 'white',
+          cursor: 'pointer',
+          transition: 'all 0.3s ease',
+          '&:hover': {
+            transform: 'scale(1.02)',
+            boxShadow: 6
+          }
+        }}
+        onClick={() => setShowTechSupport(true)}
+      >
+        <CardContent sx={{ p: 4 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+              <Avatar
+                sx={{
+                  bgcolor: 'rgba(255,255,255,0.2)',
+                  width: 64,
+                  height: 64
+                }}
+              >
+                <QuestionAnswer sx={{ fontSize: 32 }} />
+              </Avatar>
+              <Box>
+                <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 1 }}>
+                  💬 Chat with Tech Support
+                </Typography>
+                <Typography variant="h6" sx={{ opacity: 0.9 }}>
+                  Get instant help from our technical support team
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
+                  <Chip 
+                    label="Real-time Support" 
+                    size="small"
+                    sx={{ bgcolor: 'rgba(255,255,255,0.2)', color: 'white', fontWeight: 'bold' }}
+                  />
+                  <Chip 
+                    label="Available 24/7" 
+                    size="small"
+                    sx={{ bgcolor: 'rgba(255,255,255,0.2)', color: 'white', fontWeight: 'bold' }}
+                  />
+                  <Chip 
+                    label="Professional Experts" 
+                    size="small"
+                    sx={{ bgcolor: 'rgba(255,255,255,0.2)', color: 'white', fontWeight: 'bold' }}
+                  />
+                </Box>
+              </Box>
+            </Box>
+            <Button
+              variant="contained"
+              size="large"
+              startIcon={<Chat />}
+              sx={{
+                bgcolor: 'white',
+                color: '#667eea',
+                px: 4,
+                py: 1.5,
+                fontSize: '1.1rem',
+                fontWeight: 'bold',
+                '&:hover': {
+                  bgcolor: 'rgba(255,255,255,0.9)'
+                }
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowTechSupport(true);
+              }}
+            >
+              Start Chat Now
+            </Button>
+          </Box>
+        </CardContent>
+      </Card>
 
       {/* Popular Contact Methods */}
       <Box sx={{ mb: 6 }}>
@@ -681,6 +767,64 @@ const ContactPage: React.FC = () => {
               Send
             </Button>
           </Box>
+        </DialogContent>
+      </Dialog>
+
+      {/* Tech Support Chat Dialog */}
+      <Dialog
+        open={showTechSupport}
+        onClose={() => setShowTechSupport(false)}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: {
+            height: '80vh',
+            maxHeight: '800px'
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'space-between',
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          color: 'white'
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <QuestionAnswer />
+            Tech Support Chat
+          </Box>
+          <IconButton onClick={() => setShowTechSupport(false)} sx={{ color: 'white' }}>
+            <Close />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ p: 0, height: '100%' }}>
+          {user ? (
+            <MessagingSystem
+              currentUser={{
+                id: typeof user.id === 'string' ? parseInt(user.id) : user.id,
+                name: `${user.firstName} ${user.lastName}`,
+                role: user.userType === 'provider' ? 'doctor' : 'patient',
+                avatar: user.profilePicture || '/api/placeholder/40/40'
+              }}
+            />
+          ) : (
+            <Box sx={{ p: 4, textAlign: 'center' }}>
+              <Alert severity="info" sx={{ mb: 3 }}>
+                Please log in to chat with tech support
+              </Alert>
+              <Button
+                variant="contained"
+                size="large"
+                onClick={() => {
+                  setShowTechSupport(false);
+                  navigate('/login');
+                }}
+              >
+                Log In
+              </Button>
+            </Box>
+          )}
         </DialogContent>
       </Dialog>
 
